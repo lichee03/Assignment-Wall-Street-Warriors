@@ -16,13 +16,9 @@ public class TradingApp {
 
     private static List<User> users;
     private TradingEngine tradingEngine;
-    private static List<Order> pendingOrders;
+    private List<Order> pendingOrders;
     private LocalDateTime timestamp;
 
-    public enum Criteria {
-        CRITERIA_LONGEST_TIME_LENGTH,
-        CRITERIA_HIGHEST_AMOUNT_OF_MONEY
-    }
     public TradingApp(){
         
     }
@@ -45,35 +41,19 @@ public class TradingApp {
 
     }
     public void placePendingOrder(User user, Order order) {
+
         pendingOrders.add(order);
-          //if meet requirement, exceute the order;
+        while(pendingOrders.size()!=0) {
 
-    }
-    
-
-    public static List<Order> getPendingOrders() {
-        return pendingOrders;
-    }
-
-    public void cancelPenidngOrder(Criteria criteria) {
-        if (criteria.compareTo(Criteria.CRITERIA_LONGEST_TIME_LENGTH) == 0) {
-            // Sort the pending orders based on time length in descending order
-            pendingOrders.sort(Comparator.comparing(Order::getTime).reversed());
-            Order canceledOrder = pendingOrders.remove(0);
-            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
-        } else if (criteria.compareTo(Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY) == 0) {
-            pendingOrders.sort(Comparator.comparing(Order::getValue).reversed());
-            Order canceledOrder = pendingOrders.remove(0);
-            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+            for (int i = 0; i < pendingOrders.size(); i++) {
+                Order pendingorder = pendingOrders.get(i);
+                if (tradingEngine.executePendingOrder(pendingorder, user.getPortfolio())) {
+                    pendingOrders.remove(i);
+                }
+            }
         }
 
     }
-//    public static void main(String[] args) {
-//        TradingApp ta= new TradingApp();
-//        Type type= Type.BUY;
-//        Stock stock = new Stock("Google","Apple",5.12);
-//        Order order = new Order(stock,type,500,5.14);
-//        User user= new User("LiChee","lichee03@gmail.com","12345");
-//        ta.placeOrder(user, order);
-//}
+
+
 }

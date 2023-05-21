@@ -8,60 +8,51 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
  * @author lichee
  */
-public class AdminPanel {
+public class AdminPanel { //link to User authentification
     private List<User> users;
     private TradingEngine tradingEngine;
+    private boolean disqualified = false;
 
     public AdminPanel() {
         users = new ArrayList<>();
     }
-    public boolean CheckShortSell(Stock stock,PortFolio portfolio){
-        boolean shortsell=true;
+
+    public boolean CheckShortSell(Stock stock, PortFolio portfolio) {
+        boolean shortsell = false;
         int currentshares = portfolio.getHoldings().getOrDefault(stock, 0);
-        if(!tradingEngine.tryExecuteBuyOrders(stock, portfolio)){
-            System.out.println("hello");
-            
-        }
+
+
+        return shortsell;
     }
-    public boolean CheckMarginTrade(){
-        boolean marginTrade=true;
+
+    public boolean CheckMarginTrade() {
+        boolean marginTrade = false;
+        //method
+        return marginTrade;
     }
-    
 
 
     public void disqualifyUser(String username) {
         for (User user : users) {
             if (user.getName().equals(username)) {
-                user.disqualify();
+                user.Disqualified();
                 break;
             }
         }
     }
 
-    public void autoFraudDetection() {
+
+
+    public void checkAccountBalance() {
         for (User user : users) {
-            if (!user.isDisqualified()) {
-                List<Order> pendingOrders = user.getPendingOrders();
-                for (Order order : pendingOrders) {
-                    // Check for short-selling or other fraudulent transactions
-                    if (order.getQuantity() < 0) {
-                        System.out.println("Fraud detected: Short-selling by user " + user.getUsername() + " - Order: " + order.getSymbol() + " - " + order.getQuantity() + " shares at " + order.getPrice());
-                    }
+            if (!user.CheckDisqualified()) {
+                double accountBalance = user.getPortfolio().getAccountBalance();
+                if (accountBalance >= 0.5 * 500000) {
+                    user.Disqualified();
                 }
             }
         }
     }
-    public void checkAccountBalance() {
-        for (User user : users) {
-            if (!user.isDisqualified()) {
-                double accountBalance = user.getAccountBalance();
-                if (accountBalance >= 0.5 * TradingApp.INITIAL_FUNDS) {
-                    user.disqualify();
-                }
-            }
-        }
-}
 }

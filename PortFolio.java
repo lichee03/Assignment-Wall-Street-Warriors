@@ -9,15 +9,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
  * @author lichee
  */
 public class PortFolio {
 
+    private final double INITIALFUND = 500000;
     private Map<Stock, Integer> holdings;
     private double accountBalance;
     private boolean disqualified;
-    private final int INITIALFUND=500000;
 
     public PortFolio() {
         holdings = new HashMap<>();
@@ -25,32 +24,32 @@ public class PortFolio {
         this.disqualified = false;
     }
 
-    public void addStock(Stock stock, int shares) {
+    public void addStock(Stock stock, int shares,double price) {
         int currentShares = holdings.getOrDefault(stock, 0);
         holdings.put(stock, currentShares + shares);
+        accountBalance-=price*shares;
     }
 
-    public void removeStock(Stock stock, int shares) {
+    public void removeStock(Stock stock, int shares,double price) {
         int currentShares = holdings.getOrDefault(stock, 0);
-        if (currentShares >= shares) {
             holdings.put(stock, currentShares - shares);
-        }
+        accountBalance+=price*shares;
     }
 
     public Map<Stock, Integer> getHoldings() {
         return holdings;
     }
 
-    public double getValue() {  // profit
+    public double getValue() {
         double value = 0.0;
         for (Map.Entry<Stock, Integer> entry : holdings.entrySet()) {
             Stock stock = entry.getKey();
             int shares = entry.getValue();
             value += stock.getPrice() * shares;
-            accountBalance+=value;
         }
         return value;
     }
+
     public double getAccountBalance() {
         return accountBalance;
     }

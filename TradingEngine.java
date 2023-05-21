@@ -3,10 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
@@ -22,9 +19,10 @@ public class TradingEngine {
     private TradingApp tradingApp;
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
     private static List<Order> pendingOrders;
-    private final int MAX_SHARES_PER_ORDER=500;
-    private boolean isInitialTradingPeriod = true;
-    
+    public enum Criteria {
+        CRITERIA_LONGEST_TIME_LENGTH,
+        CRITERIA_HIGHEST_AMOUNT_OF_MONEY
+    }
 
     public TradingEngine(List<Stock> stocks) {
         this.stocks = stocks;     //holding currrent available stock
@@ -42,14 +40,17 @@ public class TradingEngine {
         double lowerBound = price - acceptableRange;
         double upperBound = price + acceptableRange;
         double orderPrice = order.getPrice();
-        pendingOrders= tradingApp.getPendingOrders();
-        if(time pass three days )
-            isInitialTradingPeriod=false;
-            
+        int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500;
+
         if (!isTradingHours()) {
             System.out.println("Trading is currently closed. Please try again during trading hours.");
             return;
         }
+        if(order.getShares()>maxShares){
+            System.out.println("Exceed order limitation");
+            return;
+        }
+
         if (orderPrice >= lowerBound && orderPrice <= upperBound) {
             if (order.getType() == Order.Type.BUY) {
                 buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
@@ -60,48 +61,70 @@ public class TradingEngine {
                 tryExecuteSellOrders(order.getStock(), portfolio);
             }
         } else {
-            // Price is outside the acceptable range, handle accordingly (e.g., display an error message)
+            System.out.println("Price is outside the acceptable range, order failed");
         }
     }
-    public void executePendingOrder(Order order, PortFolio portfolio) {
+
+    public void executePendingOrder(Order order, PortFolio portfolio) {  //execute if meet requirement, else store in list
         double price = order.getStock().getPrice(); //get current market stock price
         double acceptableRange = price * 0.01; // Calculate 1% of the current price
         double lowerBound = price - acceptableRange;
         double upperBound = price + acceptableRange;
         double orderPrice = order.getPrice();
-        pendingOrders= tradingApp.getPendingOrders();
-        if(time pass three days )
-            isInitialTradingPeriod=false;
-            
-        if (!isTradingHours()) {
-            System.out.println("Trading is currently closed. Please try again during trading hours.");
-            return;
-        }
-        if (orderPrice >= lowerBound && orderPrice <= upperBound) {
-            if (order.getType() == Order.Type.BUY) {
-                buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
-                tryExecuteBuyOrders(order.getStock(), portfolio);
+        int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500; // Check if the initial trading period is over
+        pendingOrders.add(order);
+        for (int i = 0; i < pendingOrders.size(); i++) {
+            Order pendingorder = pendingOrders.get(i);
 
-            } else {
-                sellOrders.get(order.getStock()).add(order);
-                tryExecuteSellOrders(order.getStock(), portfolio);
+            if (order.getShares() > maxShares) {
+                System.out.println("Exceed order limitation");
+                return;
             }
-        } else {
-            // Price is outside the acceptable range, handle accordingly (e.g., display an error message)
+            if (orderPrice >= lowerBound && orderPrice <= upperBound) {
+                if (order.getType() == Order.Type.BUY) {
+                    buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
+                    tryExecuteBuyOrders(order.getStock(), portfolio);
+
+                } else {
+                    sellOrders.get(order.getStock()).add(order);
+                    tryExecuteSellOrders(order.getStock(), portfolio);
+
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
+    }
+        public List<Order> getPendingOrders() {
+            return pendingOrders;
+        }
+
+
+    public void cancelPendingOrder(Criteria criteria) {
+        if (criteria.compareTo(Criteria.CRITERIA_LONGEST_TIME_LENGTH) == 0) {
+            // Sort the pending orders based on time length in descending order
+            pendingOrders.sort(Comparator.comparing(Order::getTime).reversed());
+            Order canceledOrder = pendingOrders.remove(0);
+            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+        } else if (criteria.compareTo(Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY) == 0) {
+            pendingOrders.sort(Comparator.comparing(Order::getValue).reversed());
+            Order canceledOrder = pendingOrders.remove(0);
+            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+        }
+
     }
     public boolean tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
         List<Order> orders = buyOrders.get(stock);
         double price = stock.getPrice();
         boolean initialTradingPeriodOver;
-        int maxShares = (initialTradingPeriod) ? 500 : Integer.MAX_VALUE; // Check if the initial trading period is over
         for (int i = 0; i < orders.size(); i++) {
             Order order = orders.get(i);
             if (order.getPrice() >= price) {
                 int currentShares = portfolio.getHoldings().getOrDefault(stock, 0); //called on the holdings map to retrieve the value associated with the stock key. If the stock key is present in the map, it returns the corresponding value 
                 double totalPrice = order.getPrice() * order.getShares();
-                if (portfolio.getValue() >= totalPrice) {
-                    portfolio.addStock(stock, order.getShares());
+                if (portfolio.getAccountBalance() >= totalPrice) {
+                    portfolio.addStock(stock, order.getShares(),order.getPrice());
                     orders.remove(i);
                     i--;
                 }
@@ -117,7 +140,7 @@ public class TradingEngine {
             if (order.getPrice() <= price) {
                 int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
                 if (currentShares >= order.getShares()) {
-                    portfolio.removeStock(stock, order.getShares());
+                    portfolio.removeStock(stock, order.getShares(),order.getPrice());
                     orders.remove(i);
                     i--;
                 }
@@ -139,6 +162,10 @@ public class TradingEngine {
         boolean isAfternoonSession = currentTime.isAfter(startAfternoon) && currentTime.isBefore(endAfternoon);
 
         return isMorningSession || isAfternoonSession;
+    }
+    public boolean isInitialTradingPeriod(){
+        LocalDateTime sessionStart= LocalDateTime.of(2023/5/21,9,00);
+        if ()
     }
 
     public void AutoMatching(Stock stock, Order order) {

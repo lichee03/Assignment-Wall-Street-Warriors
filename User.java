@@ -13,6 +13,7 @@ public class User {
     private String email;
     private String password;
     private PortFolio portfolio;
+    private boolean disqualified=false;
 
     public User(String name, String email, String password) {
         this.name = name;
@@ -36,5 +37,14 @@ public class User {
     public PortFolio getPortfolio() {
         return portfolio;
     }
+    public boolean Disqualified(){
+       disqualified=true;
+    }
+    public boolean CheckDisqualified(){
+        return disqualified;
+    }
+
+
+
     
 }
