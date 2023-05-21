@@ -22,6 +22,7 @@ public class AdminPanel {
         boolean shortsell=true;
         int currentshares = portfolio.getHoldings().getOrDefault(stock, 0);
         if(!tradingEngine.tryExecuteBuyOrders(stock, portfolio)){
+            System.out.println("hello");
             
         }
     }
