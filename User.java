@@ -38,7 +38,7 @@ public class User {
         return portfolio;
     }
     public boolean Disqualified(){
-       disqualified=true;
+       return disqualified=true;
     }
     public boolean CheckDisqualified(){
         return disqualified;
