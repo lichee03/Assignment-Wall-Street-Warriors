@@ -1,0 +1,204 @@
+package com.example.testing1.WallStreet;
+
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.PriorityQueue;
+import java.util.Scanner;
+
+public class Price2 {
+    private String symbol;
+    private String symbolUrl;
+
+    private PriorityQueue<ComparableDataByDate> openDate;
+    private PriorityQueue<ComparableDataByDate> highDate;
+    private PriorityQueue<ComparableDataByDate> lowDate;
+    private PriorityQueue<ComparableDataByDate> closeDate;
+    private PriorityQueue<ComparableDataByDate> volumeDate;
+    private PriorityQueue<ComparableDataByDate> dividendsDate;
+    private PriorityQueue<ComparableDataByDate> ssDate;
+
+    private PriorityQueue<ComparableData> openData;
+    private PriorityQueue<ComparableData> highData;
+    private PriorityQueue<ComparableData> lowData;
+    private PriorityQueue<ComparableData> closeData;
+    private PriorityQueue<ComparableData> volumeData;
+    private PriorityQueue<ComparableData> dividendsData;
+    private PriorityQueue<ComparableData> ssData;
+
+    public Price2() {
+        openDate = new PriorityQueue<>();
+        highDate = new PriorityQueue<>();
+        lowDate = new PriorityQueue<>();
+        closeDate = new PriorityQueue<>();
+        volumeDate = new PriorityQueue<>();
+        dividendsDate = new PriorityQueue<>();
+        ssDate = new PriorityQueue<>();
+
+        openData = new PriorityQueue<>();
+        highData = new PriorityQueue<>();
+        lowData = new PriorityQueue<>();
+        closeData = new PriorityQueue<>();
+        volumeData = new PriorityQueue<>();
+        dividendsData = new PriorityQueue<>();
+        ssData = new PriorityQueue<>();
+    }
+
+    public void fetchData(String symbol) {
+        this.symbol = symbol;
+        symbolUrl = "&symbol=" + symbol;
+
+        clearQueues();
+
+        try {
+            // API URL
+            String apiKey = "?apikey=UM-5db9edd90046daabace072a7d8f3a954b799f1cf2a87d04c50cd60eff8d7b846";
+            String baseURL = "https://wall-street-warriors-api-um.vercel.app/";
+            String whatToFind = "price";
+            URL url = new URL(baseURL + whatToFind + apiKey + symbolUrl);
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.connect();
+
+            int responseCode = conn.getResponseCode();
+
+            if (responseCode != 200) {
+                throw new RuntimeException("HttpResponseCode: " + responseCode);
+            } else {
+                StringBuilder informationString = new StringBuilder();
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                for (String line = br.readLine(); line != null; line = br.readLine()) {
+                    informationString.append(line);
+                }
+                br.close();
+
+                try {
+                    String jsonString = informationString.toString();
+
+                    getData("Open", openDate, openData, jsonString);
+                    getData("High", highDate, highData, jsonString);
+                    getData("Low", lowDate, lowData, jsonString);
+                    getData("Close", closeDate, closeData, jsonString);
+                    getData("Volume", volumeDate, volumeData, jsonString);
+                    getData("Dividends", dividendsDate, dividendsData, jsonString);
+                    getData("Stock Splits", ssDate, ssData, jsonString);
+
+
+
+                    // Print other data queues...
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getData(String dataWant, PriorityQueue<ComparableDataByDate> date, PriorityQueue<ComparableData> data, String jsonString) {
+        JSONObject json = new JSONObject(jsonString);
+        JSONObject jsonObj = json.getJSONObject(symbol).getJSONObject(dataWant);
+        for (Object time : jsonObj.keySet()) {
+            double value = jsonObj.getDouble(time.toString());
+            EpochTimestampConverter eptc = new EpochTimestampConverter(time);
+            date.offer(new ComparableDataByDate(eptc.convertToDate(), value));
+            data.offer(new ComparableData(eptc.convertToDate(), value));
+        }
+    }
+
+    public <E> void printQueue(PriorityQueue<E> queue) {
+        PriorityQueue<E> tempQueue = new PriorityQueue<>(queue);
+        while (!tempQueue.isEmpty()) {
+            E element = tempQueue.poll();
+            System.out.println(element);
+        }
+    }
+
+    public void clearQueues() {
+        openDate.clear();
+        highDate.clear();
+        lowDate.clear();
+        closeDate.clear();
+        volumeDate.clear();
+        dividendsDate.clear();
+        ssDate.clear();
+
+        openData.clear();
+        highData.clear();
+        lowData.clear();
+        closeData.clear();
+        volumeData.clear();
+        dividendsData.clear();
+        ssData.clear();
+    }
+
+    public PriorityQueue<ComparableDataByDate> getOpenDate() {
+        return openDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getHighDate() {
+        return highDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getLowDate() {
+        return lowDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getCloseDate() {
+        return closeDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getVolumeDate() {
+        return volumeDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getDividendsDate() {
+        return dividendsDate;
+    }
+
+    public PriorityQueue<ComparableDataByDate> getSsDate() {
+        return ssDate;
+    }
+
+    public PriorityQueue<ComparableData> getOpenData() {
+        return openData;
+    }
+
+    public PriorityQueue<ComparableData> getHighData() {
+        return highData;
+    }
+
+    public PriorityQueue<ComparableData> getLowData() {
+        return lowData;
+    }
+
+    public PriorityQueue<ComparableData> getCloseData() {
+        return closeData;
+    }
+
+    public PriorityQueue<ComparableData> getVolumeData() {
+        return volumeData;
+    }
+
+    public PriorityQueue<ComparableData> getDividendsData() {
+        return dividendsData;
+    }
+
+    public PriorityQueue<ComparableData> getSsData() {
+        return ssData;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Symbol: ");
+        String symbol = sc.nextLine();
+
+        Price2 price2 = new Price2();
+        price2.fetchData(symbol);
+        System.out.println(price2.getCloseData());
+    }
+}
