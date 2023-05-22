@@ -3,12 +3,12 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 
+import java.time.Duration;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
- *
  * @author lichee
  */
 public class TradingEngine {
@@ -19,6 +19,7 @@ public class TradingEngine {
     private TradingApp tradingApp;
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
     private static List<Order> pendingOrders;
+
     public enum Criteria {
         CRITERIA_LONGEST_TIME_LENGTH,
         CRITERIA_HIGHEST_AMOUNT_OF_MONEY
@@ -40,65 +41,58 @@ public class TradingEngine {
         double lowerBound = price - acceptableRange;
         double upperBound = price + acceptableRange;
         double orderPrice = order.getPrice();
+        Order.Position position = order.getPosition();
         int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500;
-
         if (!isTradingHours()) {
             System.out.println("Trading is currently closed. Please try again during trading hours.");
             return;
         }
-        if(order.getShares()>maxShares){
+        if (order.getShares() > maxShares) {
             System.out.println("Exceed order limitation");
             return;
         }
+        switch (position) {
+            case MARKET:
+                if (orderPrice >= lowerBound && orderPrice <= upperBound) {
+                    if (order.getType() == Order.Type.BUY) {
+                        buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
+                        tryExecuteBuyOrders(order.getStock(), portfolio);
 
-        if (orderPrice >= lowerBound && orderPrice <= upperBound) {
-            if (order.getType() == Order.Type.BUY) {
-                buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
-                tryExecuteBuyOrders(order.getStock(), portfolio);
-
-            } else {
-                sellOrders.get(order.getStock()).add(order);
-                tryExecuteSellOrders(order.getStock(), portfolio);
-            }
-        } else {
-            System.out.println("Price is outside the acceptable range, order failed");
+                    } else {
+                        sellOrders.get(order.getStock()).add(order);
+                        tryExecuteSellOrders(order.getStock(), portfolio);
+                    }
+                } else {
+                    System.out.println("Price is outside the acceptable range, order failed");
+                }
+            case PENDING:
+                pendingOrders.add(order);
+                CheckPendingOrder(pendingOrders, portfolio);
         }
     }
 
-    public void executePendingOrder(Order order, PortFolio portfolio) {  //execute if meet requirement, else store in list
-        double price = order.getStock().getPrice(); //get current market stock price
-        double acceptableRange = price * 0.01; // Calculate 1% of the current price
-        double lowerBound = price - acceptableRange;
-        double upperBound = price + acceptableRange;
-        double orderPrice = order.getPrice();
-        int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500; // Check if the initial trading period is over
-        pendingOrders.add(order);
+}
+
+    public void CheckPendingOrder(List<Order>pendingOrders, PortFolio portfolio) {  //execute if meet requirement, else store in list
         for (int i = 0; i < pendingOrders.size(); i++) {
             Order pendingorder = pendingOrders.get(i);
+            if (pendingorder.getStock().getPrice() == pendingorder.getPrice()) {
 
-            if (order.getShares() > maxShares) {
-                System.out.println("Exceed order limitation");
-                return;
-            }
-            if (orderPrice >= lowerBound && orderPrice <= upperBound) {
-                if (order.getType() == Order.Type.BUY) {
-                    buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
-                    tryExecuteBuyOrders(order.getStock(), portfolio);
+                if (pendingorder.getType() == Order.Type.BUY) {
+                    buyOrders.get(pendingorder.getStock()).add(pendingorder); //find order whether its available or not , if available, add order
+                    tryExecuteBuyOrders(pendingorder.getStock(), portfolio);
 
                 } else {
-                    sellOrders.get(order.getStock()).add(order);
-                    tryExecuteSellOrders(order.getStock(), portfolio);
-
+                    sellOrders.get(pendingorder.getStock()).add(pendingorder);
+                    tryExecuteSellOrders(pendingorder.getStock(), portfolio);
                 }
-                return true;
-            } else {
-                return false;
             }
         }
     }
-        public List<Order> getPendingOrders() {
-            return pendingOrders;
-        }
+
+    public List<Order> getPendingOrders() {
+        return pendingOrders;
+    }
 
 
     public void cancelPendingOrder(Criteria criteria) {
@@ -114,6 +108,7 @@ public class TradingEngine {
         }
 
     }
+
     public boolean tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
         List<Order> orders = buyOrders.get(stock);
         double price = stock.getPrice();
@@ -124,12 +119,13 @@ public class TradingEngine {
                 int currentShares = portfolio.getHoldings().getOrDefault(stock, 0); //called on the holdings map to retrieve the value associated with the stock key. If the stock key is present in the map, it returns the corresponding value 
                 double totalPrice = order.getPrice() * order.getShares();
                 if (portfolio.getAccountBalance() >= totalPrice) {
-                    portfolio.addStock(stock, order.getShares(),order.getPrice());
+                    portfolio.addStock(stock, order.getShares(), order.getPrice());
                     orders.remove(i);
                     i--;
                 }
             }
-        }return true;
+        }
+        return true;
     }
 
     public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {
@@ -140,7 +136,7 @@ public class TradingEngine {
             if (order.getPrice() <= price) {
                 int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
                 if (currentShares >= order.getShares()) {
-                    portfolio.removeStock(stock, order.getShares(),order.getPrice());
+                    portfolio.removeStock(stock, order.getShares(), order.getPrice());
                     orders.remove(i);
                     i--;
                 }
@@ -163,12 +159,18 @@ public class TradingEngine {
 
         return isMorningSession || isAfternoonSession;
     }
-    public boolean isInitialTradingPeriod(){
-        LocalDateTime sessionStart= LocalDateTime.of(2023/5/21,9,00);
-        if ()
+
+    public boolean isInitialTradingPeriod() {
+        LocalDateTime sessionStart = LocalDateTime.of(2023, 5, 22, 9, 00);
+        LocalDateTime now = LocalDateTime.now();
+        long noOfDays = Duration.between(sessionStart, now).toDays();
+        if (noOfDays > 3) {
+            return true;
+        } else
+            return false;
     }
 
-    public void AutoMatching(Stock stock, Order order) {
+    public void AutoMatching(String symbol) {
 //        List<Order> sellOrders = this.sellOrders.get(stock);
         List<Order> buyOrders = this.buyOrders.get(stock);
 
@@ -204,7 +206,6 @@ public class TradingEngine {
             }
         }
     }
-
 
 
     public void updatePrices() {

@@ -49,8 +49,8 @@ public class AdminPanel { //link to User authentification
         for (User user : users) {
             if (!user.CheckDisqualified()) {
                 double accountBalance = user.getPortfolio().getAccountBalance();
-                if (accountBalance >= 0.5 * 500000) {
-                    user.Disqualified();
+                if (accountBalance >= 0.5 * 500000&& accountBalance<0) {
+                    disqualifyUser(user.getName());
                 }
             }
         }

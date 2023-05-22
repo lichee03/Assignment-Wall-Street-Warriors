@@ -15,16 +15,21 @@ public class Order {
         BUY,
         SELL
     }
+    public enum Position{
+        MARKET,
+        PENDING
+    }
 
     private Stock stock; 
     private Type type;
+    private Position position;
     private int shares;
     private double price;
     private LocalDateTime time;
-
-    public Order(Stock stock, Type type, int shares, double price) {
+    public Order(Stock stock, Type type, Position position ,int shares, double price) {
         this.stock = stock;
         this.type = type;
+        this.position=position;
         this.shares = shares;
         this.price = price;
         this.time=LocalDateTime.now();
@@ -37,6 +42,7 @@ public class Order {
     public Type getType() {
         return type;
     }
+    public Position getPosition(){return position;}
 
     public int getShares() {
         return shares;
