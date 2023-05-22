@@ -3,7 +3,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 
-import Admin_Trading.Order.Type;
 
 import java.util.List;
 import java.time.LocalDateTime;
@@ -39,6 +38,14 @@ public class TradingApp {
     public void placeOrder(User user, Order order) {
         tradingEngine.executeOrder(order, user.getPortfolio());
 
+    }
+    public void UpdateOrderBook(){
+        System.out.println("Current Order Book: ");
+        tradingEngine.getSellOrders();
+    }
+    public void updatePendingOrder(){
+        System.out.println("Current Order Boook: ");
+        tradingEngine.getPendingOrders();
     }
 
 

@@ -13,7 +13,6 @@ import java.util.List;
 public class AdminPanel { //link to User authentification
     private List<User> users;
     private TradingEngine tradingEngine;
-    private boolean disqualified = false;
 
     public AdminPanel() {
         users = new ArrayList<>();
@@ -37,7 +36,7 @@ public class AdminPanel { //link to User authentification
     public void disqualifyUser(String username) {
         for (User user : users) {
             if (user.getName().equals(username)) {
-                user.Disqualified();
+                user.Disqualified(true);
                 break;
             }
         }

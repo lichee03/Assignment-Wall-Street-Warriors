@@ -20,6 +20,7 @@ public class TradingEngine {
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
     private static List<Order> pendingOrders;
 
+
     public enum Criteria {
         CRITERIA_LONGEST_TIME_LENGTH,
         CRITERIA_HIGHEST_AMOUNT_OF_MONEY
@@ -71,9 +72,8 @@ public class TradingEngine {
         }
     }
 
-}
 
-    public void CheckPendingOrder(List<Order>pendingOrders, PortFolio portfolio) {  //execute if meet requirement, else store in list
+    public void CheckPendingOrder(List<Order> pendingOrders, PortFolio portfolio) {  //execute if meet requirement, else store in list
         for (int i = 0; i < pendingOrders.size(); i++) {
             Order pendingorder = pendingOrders.get(i);
             if (pendingorder.getStock().getPrice() == pendingorder.getPrice()) {
@@ -84,6 +84,7 @@ public class TradingEngine {
 
                 } else {
                     sellOrders.get(pendingorder.getStock()).add(pendingorder);
+                    //if() if the sell order being bought by other user, baru execute
                     tryExecuteSellOrders(pendingorder.getStock(), portfolio);
                 }
             }
@@ -94,52 +95,90 @@ public class TradingEngine {
         return pendingOrders;
     }
 
-
-    public void cancelPendingOrder(Criteria criteria) {
-        if (criteria.compareTo(Criteria.CRITERIA_LONGEST_TIME_LENGTH) == 0) {
-            // Sort the pending orders based on time length in descending order
-            pendingOrders.sort(Comparator.comparing(Order::getTime).reversed());
-            Order canceledOrder = pendingOrders.remove(0);
-            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
-        } else if (criteria.compareTo(Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY) == 0) {
-            pendingOrders.sort(Comparator.comparing(Order::getValue).reversed());
-            Order canceledOrder = pendingOrders.remove(0);
-            System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
-        }
-
+    public Map<Stock, List<Order>> getBuyOrders() {
+        return buyOrders;
     }
 
-    public boolean tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
+    public Map<Stock, List<Order>> getSellOrders() {
+        return sellOrders;
+    }
+
+
+    public void cancelPendingOrder(Criteria criteria) {
+        Criteria criterias = criteria;
+
+        if (!pendingOrders.isEmpty()) {
+            switch (criterias) {
+                case CRITERIA_LONGEST_TIME_LENGTH:
+                    // Sort the pending orders based on time length in descending order
+                    pendingOrders.sort(Comparator.comparing(Order::getTime).reversed());
+                    Order canceledOrder = pendingOrders.remove(0);
+                    System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+                    break;
+                case CRITERIA_HIGHEST_AMOUNT_OF_MONEY:
+                    pendingOrders.sort(Comparator.comparing(Order::getValue).reversed());
+                    canceledOrder = pendingOrders.remove(0);
+                    System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+                    break;
+            }
+
+        } else {
+            System.out.println("No pending order available.");
+        }
+    }
+
+    public void tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
         List<Order> orders = buyOrders.get(stock);
         double price = stock.getPrice();
         boolean initialTradingPeriodOver;
         for (int i = 0; i < orders.size(); i++) {
             Order order = orders.get(i);
             if (order.getPrice() >= price) {
-                int currentShares = portfolio.getHoldings().getOrDefault(stock, 0); //called on the holdings map to retrieve the value associated with the stock key. If the stock key is present in the map, it returns the corresponding value 
+                int currentShares = portfolio.getHoldings().getOrDefault(stock, 0); //called on the holdings map to retrieve the value associated with the stock key. If the stock key is present in the map, it returns the corresponding value
                 double totalPrice = order.getPrice() * order.getShares();
                 if (portfolio.getAccountBalance() >= totalPrice) {
                     portfolio.addStock(stock, order.getShares(), order.getPrice());
                     orders.remove(i);
+                    this.buyOrders.get(order.getStock()).remove(order);
+                    i--;
+                } else {
+                    System.out.println("Current Account Balance not enough. Order Failed.");
+                    orders.remove(i);
+                    this.buyOrders.get(order.getStock()).remove(order);
                     i--;
                 }
+            } else {
+                System.out.println("Buy Order price must be more than or equal to the current stock price. Order Failed");
+                orders.remove(i);
+                this.buyOrders.get(order.getStock()).remove(order);
+                i--;
             }
         }
-        return true;
     }
 
-    public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {
+    public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//update order book
         List<Order> orders = sellOrders.get(stock);
         double price = stock.getPrice();
         for (int i = 0; i < orders.size(); i++) {
             Order order = orders.get(i);
-            if (order.getPrice() <= price) {
+            if (order.getPrice() <= price) { // is this line needed?
                 int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
                 if (currentShares >= order.getShares()) {
                     portfolio.removeStock(stock, order.getShares(), order.getPrice());
                     orders.remove(i);
+                    this.sellOrders.get(order.getStock()).remove(order);
+                    i--;
+                } else {
+                    System.out.println("Not enough share to sell. Order failed");
+                    orders.remove(i);
+                    this.sellOrders.get(order.getStock()).remove(order);
                     i--;
                 }
+            } else {
+                System.out.println("Sell Order price must be equal or less than the current stock price. Order failed.");
+                orders.remove(i);
+                this.sellOrders.get(order.getStock()).remove(order);
+                i--;
             }
         }
     }
@@ -168,6 +207,17 @@ public class TradingEngine {
             return true;
         } else
             return false;
+    }
+
+    public double DisplaySuggestedPrice(String symbol) {
+        double price;
+        for (int i = 0; i < stocks.size(); i++) {
+            Stock stock = stocks.get(i);
+            if (stock.getSymbol() == symbol) {
+               return price= stock.getPrice();
+            }
+
+        }
     }
 
     public void AutoMatching(String symbol) {
@@ -216,5 +266,9 @@ public class TradingEngine {
             tryExecuteBuyOrders(stock, new PortFolio()); // clear the previous user
             tryExecuteSellOrders(stock, new PortFolio());
         }
+    }
+
+    public void replemnishLot() {
+
     }
 }
