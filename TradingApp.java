@@ -17,13 +17,10 @@ public class TradingApp {
     private TradingEngine tradingEngine;
     private List<Order> pendingOrders;
 
-    public TradingApp() {
-
-    }
 
     public TradingApp(List<User> users, TradingEngine tradingEngine) {
         this.users = users;
-        this.tradingEngine = tradingEngine;
+       this.tradingEngine = tradingEngine;
     }
 
     public User login(String email, String password) {

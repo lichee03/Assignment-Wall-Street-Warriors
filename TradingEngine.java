@@ -218,44 +218,9 @@ public class TradingEngine {
             }
 
         }
+    return 0;
     }
 
-    public void AutoMatching(String symbol) {
-//        List<Order> sellOrders = this.sellOrders.get(stock);
-        List<Order> buyOrders = this.buyOrders.get(stock);
-
-//        double price = stock.getPrice();
-//        for (int i = 0; i < sellOrders.size(); i++) {
-//            Order sellOrder = sellOrders.get(i);
-//            if (sellOrder.getPrice() <= price) {
-//                int sellShares = sellOrder.getShares();
-        for (int j = 0; j < buyOrders.size(); j++) {
-            Order buyOrder = buyOrders.get(j);
-
-            if (buyOrder.getPrice() >= sellOrder.getPrice()) {
-                int buyShares = buyOrder.getShares();
-
-                int matchedShares = Math.min(sellShares, buyShares);
-                double tradeValue = matchedShares * sellOrder.getPrice();
-
-                portfolio.addStock(stock, matchedShares);
-                portfolio.subtractValue(tradeValue);
-
-                sellShares -= matchedShares;
-                buyShares -= matchedShares;
-
-//                        if (sellShares == 0) {
-//                            sellOrders.remove(i);
-//                            i--;
-//                            break;
-//                        }
-                if (buyShares == 0) {
-                    buyOrders.remove(j);
-                    j--;
-                }
-            }
-        }
-    }
 
 
     public void updatePrices() {
@@ -268,7 +233,7 @@ public class TradingEngine {
         }
     }
 
-    public void replemnishLot() {
+    //public void replemnishLot() {
 
-    }
+    //}
 }
