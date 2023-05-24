@@ -1,4 +1,6 @@
-
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 public class User {
 
 
@@ -7,12 +9,19 @@ public class User {
         private String password;
         private PortFolio portfolio;
         private boolean disqualified = false;
+        private double startingAccountBalance;
+        private double currentAccountBalance;
+        public int points;
+
+        private List<Order> transactionHistory; 
 
         public User(String name, String email, String password) {
             this.name = name;
             this.email = email;
             this.password = password;
             this.portfolio = new PortFolio();
+            points = 0;
+            transactionHistory = new ArrayList<>();
         }
 
         public String getName() {
@@ -38,45 +47,8 @@ public class User {
         public boolean CheckDisqualified() {
             return disqualified;
         }
-
-        private String id;
-        private double accountBalance;
-        private double totalPnL;
-        private int numTrades;
-        private int winningTrades;
-        private int losingTrades;
-
-        public User(String id, double accountBalance, double totalPnL, int numTrades, int winningTrades, int losingTrades) {
-            this.id = id;
-            this.accountBalance = accountBalance;
-            this.totalPnL = totalPnL;
-            this.numTrades = numTrades;
-            this.winningTrades = winningTrades;
-            this.losingTrades = losingTrades;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public double getAccountBalance() {
-            return accountBalance;
-        }
-
-        public double getTotalPnL() {
-            return totalPnL;
-        }
-
-        public int getNumTrades() {
-            return numTrades;
-        }
-
-        public int getWinningTrades() {
-            return winningTrades;
-        }
-
-        public int getLosingTrades() {
-            return losingTrades;
+        public List<Order> getTransactionHistory() {
+            return transactionHistory;
         }
     }
 

@@ -45,5 +45,32 @@ public class TradingApp {
         tradingEngine.getPendingOrders();
     }
 
+    public void updateAllUserPoints(){
+        for (User user : users){
+            updatePoints(user);
+        }
+    }
+    private void updatePoints(User user) { //to be used with the API, updates the points for ***a user***
+        double pnl = 0.0;
+        for (Order order : user.getTransactionHistory()) { //Iterates thru all the user's buy/sell orders
+            Stock stock = order.getStock();
+            int shares = order.getShares();
+            double purchasePrice = order.getPrice(); //price of stock during the order
+            double currentPrice = stock.getPrice(); //current price of the stock
+            if (order.getType() == Order.Type.BUY) {
+                pnl += (currentPrice - purchasePrice) * shares;
+            } else if (order.getType() == Order.Type.SELL) {
+                pnl -= (currentPrice - purchasePrice) * shares;
+            }
+        }
+        if (pnl > 0) {
+            user.points += (int) Math.round(pnl);
+        } else {
+            user.points -= (int) Math.round(Math.abs(pnl));
+        }
+    }
+    
+
+
 
 }
