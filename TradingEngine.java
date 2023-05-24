@@ -172,7 +172,7 @@ public class TradingEngine {
             }
         }
     }
-
+    }
     public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//update order book
         List<Order> orders = sellOrders.get(stock);
         double price = stock.getPrice();
