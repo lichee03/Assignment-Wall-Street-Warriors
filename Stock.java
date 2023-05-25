@@ -7,16 +7,30 @@
  *
  * @author lichee
  */
-public class Stock {
-
+public class Stock implements Comparable<Stock> {
     private String symbol;
     private String name;
-    private double price;
+    private String currency;
+    private String exchange;
+    private String mic;
+    private String country;
+    private String type;
 
-    public Stock(String symbol, String name, double price) {
+    private double price;
+    private Price2 price2 ;
+    private Stocklist2 stocklist;
+    private boolean priceUpdated=false;
+    public Stock(String symbol) {
+        this.symbol = symbol;
+    }
+    public Stock(String symbol, String name, String currency, String exchange, String mic, String country, String type) {
         this.symbol = symbol;
         this.name = name;
-        this.price = price;
+        this.currency = currency;
+        this.exchange = exchange;
+        this.mic = mic;
+        this.country = country;
+        this.type = type;
     }
 
     public String getSymbol() {
@@ -24,15 +38,61 @@ public class Stock {
     }
 
     public String getName() {
-        return name;
+        return symbol;
     }
 
+    public String getCurrency() {
+        return symbol;
+    }
+
+    public String getExchange() {
+        return exchange;
+    }
+
+    public String getMic() {
+        return symbol;
+    }
+
+    public String getCountry() {
+        return symbol;
+    }
+
+    public String getType() {
+        return symbol;
+    }
+
+
+
+    public String toString() {
+        return "Symbol: " + this.symbol +
+                "  Name: " + this.name +
+                "  Currency: " + this.currency +
+                "  Exchange: " + this.exchange +
+                "  Mic: " + this.mic +
+                "  Country: " + this.country +
+                "  Type: " + this.type+ "\n";
+    }
+
+
+    @Override
+    public int compareTo(Stock o) {
+        return symbol.compareTo(o.getSymbol());
+
+    }
+
+
     public double getPrice() {
+        if(!priceUpdated){
+            updatePrice();
+            return price;
+        }
         return price;
     }
 
-    public void setPrice(double price) {
-        this.price = price;
+    public boolean updatePrice() {
+        this.price2= new Price2();
+        price2.fetchData(getSymbol());
+        this.price=price2.getPrices();
+        return priceUpdated=true;
     }
 }
-
