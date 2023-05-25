@@ -18,8 +18,9 @@ public class TradingEngine {
     private Map<Stock, List<Order>> sellOrders;
     private TradingApp tradingApp;
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
-    private static List<Order> pendingOrders;
+    private List<Order> pendingOrders;
 
+    private Stocklist2 stocklist;
 
     public enum Criteria {
         CRITERIA_LONGEST_TIME_LENGTH,
@@ -27,26 +28,35 @@ public class TradingEngine {
     }
 
     public TradingEngine(List<Stock> stocks) {
-        this.stocks = stocks;     //holding currrent available stock
+        this.stocks = stocks;
         this.buyOrders = new HashMap<>();
         this.sellOrders = new HashMap<>();
-        this.lotPool = new HashMap<>();
-        for (Stock stock : stocks) {
-            buyOrders.put(stock, new ArrayList<>()); //each stock will be assign a list
-            sellOrders.put(stock, new ArrayList<>());
-            lotPool.put(stock, 500); // Initialize the lot pool for each stock with 500 shares
+        this.pendingOrders = new ArrayList<>();
 
+        for (Stock stock : stocks) {
+            buyOrders.put(stock, new ArrayList<>());
+            sellOrders.put(stock, new ArrayList<>());
         }
     }
 
-    public void executeOrder(Order order, User user) {
+    public void executeOrder(Order order, PortFolio portfolio) {
+        String symbol = order.getStock().getSymbol();
         double price = order.getStock().getPrice(); //get current market stock price
         double acceptableRange = price * 0.01; // Calculate 1% of the current price
         double lowerBound = price - acceptableRange;
         double upperBound = price + acceptableRange;
         double orderPrice = order.getPrice();
-        Order.Position position = order.getPosition(); //get position (market/pending)
+        Order.Position position = order.getPosition();
         int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500;
+        // Check if the stock exists in the buyOrders map
+        if (!buyOrders.containsKey(order.getStock())) {
+            buyOrders.put(order.getStock(), new ArrayList<>());
+        }
+
+        // Check if the stock exists in the sellOrders map
+        if (!sellOrders.containsKey(order.getStock())) {
+            sellOrders.put(order.getStock(), new ArrayList<>());
+        }
         if (!isTradingHours()) {
             System.out.println("Trading is currently closed. Please try again during trading hours.");
             return;
@@ -57,24 +67,82 @@ public class TradingEngine {
         }
         switch (position) {
             case MARKET:
+                if (order.getType() == Order.Type.BUY) {
+                    buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
+                    tryExecuteBuyOrders(order.getStock(), portfolio);
+
+                } else {
+                    sellOrders.get(order.getStock()).add(order);
+                    tryExecuteSellOrders(order.getStock(), portfolio);
+                }
+                break;
+            case LIMIT:
                 if (orderPrice >= lowerBound && orderPrice <= upperBound) {
-                    if (order.getType() == Order.Type.BUY) {
-                        buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
-                        tryExecuteBuyOrders(order.getStock(), user.getPortfolio());
-                    } else {
-                        sellOrders.get(order.getStock()).add(order);
-                        tryExecuteSellOrders(order.getStock(), user.getPortfolio());
-                    }
-                user.getTransactionHistory().add(order); // Adds the transaction to the user's transaction history
+                    pendingOrders.add(order);
+                    CheckPendingOrder(pendingOrders, portfolio);
                 } else {
                     System.out.println("Price is outside the acceptable range, order failed");
                 }
-            case PENDING:
-                pendingOrders.add(order);
-                CheckPendingOrder(pendingOrders, user.getPortfolio());
+                break;
         }
     }
 
+    public void tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
+        List<Order> orders = buyOrders.get(stock);
+        double price = stock.getPrice();
+        for (int i = 0; i < orders.size(); i++) {
+            System.out.println("Size"+orders.size());
+            Order order = orders.get(i);
+            if (order.getPrice() >= price) {
+                double totalPrice = order.getPrice() * order.getShares();
+                if (portfolio.getAccountBalance() >= totalPrice) {
+                    portfolio.addStock(stock, order.getShares(), order.getPrice());
+                    orders.remove(i);
+                    this.buyOrders.get(order.getStock()).remove(order);
+                    i--;
+                    System.out.println("Buy Order completed");
+                } else {
+                    System.out.println("Current Account Balance not enough.Order Failed.");
+                    orders.remove(i);
+                    this.buyOrders.get(order.getStock()).remove(order);
+                    i--;
+                }
+            } else {
+                System.out.println("Buy Order price must be more than or equal to the current stock price. com.example.testing1.WallStreet.Stock.Order Failed");
+                orders.remove(i);
+                this.buyOrders.get(order.getStock()).remove(order);
+                i--;
+            }
+        }
+    }
+
+    public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//update order book
+        List<Order> orders = sellOrders.get(stock);
+        double price = stock.getPrice();
+        for (int i = 0; i < orders.size(); i++) {
+            Order order = orders.get(i);
+            if (order.getPrice() <= price) { // is this line needed?
+                int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
+                if (currentShares >= order.getShares()) {
+                    portfolio.removeStock(stock, order.getShares(), order.getPrice());
+                    orders.remove(i);
+                    this.sellOrders.get(order.getStock()).remove(order);
+                    i--;
+                    System.out.println("Sell Order Completed.");
+                } else {
+                    System.out.println("Not enough share to sell.Order failed");
+                    orders.remove(i);
+                    this.sellOrders.get(order.getStock()).remove(order);
+                    i--;
+                }
+            } else {
+                System.out.println("Sell Order price must be equal or less than the current stock price. com.example.testing1.WallStreet.Stock.Order failed.");
+                orders.remove(i);
+                this.sellOrders.get(order.getStock()).remove(order);
+                i--;
+            }
+        }
+    }
 
     public void CheckPendingOrder(List<Order> pendingOrders, PortFolio portfolio) {  //execute if meet requirement, else store in list
         for (int i = 0; i < pendingOrders.size(); i++) {
@@ -92,18 +160,6 @@ public class TradingEngine {
                 }
             }
         }
-    }
-
-    public List<Order> getPendingOrders() {
-        return pendingOrders;
-    }
-
-    public Map<Stock, List<Order>> getBuyOrders() {
-        return buyOrders;
-    }
-
-    public Map<Stock, List<Order>> getSellOrders() {
-        return sellOrders;
     }
 
 
@@ -130,76 +186,6 @@ public class TradingEngine {
         }
     }
 
-    public void tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
-        List<Order> orders = buyOrders.get(stock);
-        double marketPrice = stock.getPrice();
-        boolean initialTradingPeriodOver;
-        for (int i = 0; i < orders.size(); i++) {
-            Order order = orders.get(i);
-            if (order.getPrice() >= marketPrice) {
-                int currentShares = portfolio.getHoldings().getOrDefault(stock, 0); //called on the holdings map to retrieve the value associated with the stock key. If the stock key is present in the map, it returns the corresponding value
-                double totalPrice = order.getPrice() * order.getShares();
-                if (portfolio.getAccountBalance() >= totalPrice) {
-                    if (sellOrders.get(stock).isEmpty()) { // if there are no sell orders for that stock
-                        int remainingShares = lotPool.get(stock);
-                        if (remainingShares >= order.getShares() && marketPrice <= order.getPrice()) { //if shares from 500-lot is enough for the order and the price is ok
-                            portfolio.addStock(stock, order.getShares(), order.getPrice());
-                            lotPool.put(stock, remainingShares - order.getShares());
-                            orders.remove(i);
-                            this.buyOrders.get(order.getStock()).remove(order);
-                            i--;
-                    } else {
-                        System.out.println("Insufficient shares available in the lot pool or market price exceeds the order price. Order failed.");
-                        orders.remove(i);
-                        this.buyOrders.get(order.getStock()).remove(order);
-                        i--;
-                    }
-                    portfolio.addStock(stock, order.getShares(), order.getPrice());
-                    orders.remove(i);
-                    this.buyOrders.get(order.getStock()).remove(order);
-                    i--;
-                } else {
-                    System.out.println("Current Account Balance not enough. Order Failed.");
-                    orders.remove(i);
-                    this.buyOrders.get(order.getStock()).remove(order);
-                    i--;
-                }
-            } else {
-                System.out.println("Buy Order marketPrice must be more than or equal to the current stock marketPrice. Order Failed");
-                orders.remove(i);
-                this.buyOrders.get(order.getStock()).remove(order);
-                i--;
-            }
-        }
-    }
-    }
-    public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//update order book
-        List<Order> orders = sellOrders.get(stock);
-        double price = stock.getPrice();
-        for (int i = 0; i < orders.size(); i++) {
-            Order order = orders.get(i);
-            if (order.getPrice() <= price) { // is this line needed?
-                int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
-                if (currentShares >= order.getShares()) {
-                    portfolio.removeStock(stock, order.getShares(), order.getPrice());
-                    orders.remove(i);
-                    this.sellOrders.get(order.getStock()).remove(order);
-                    i--;
-                } else {
-                    System.out.println("Not enough share to sell. Order failed");
-                    orders.remove(i);
-                    this.sellOrders.get(order.getStock()).remove(order);
-                    i--;
-                }
-            } else {
-                System.out.println("Sell Order price must be equal or less than the current stock price. Order failed.");
-                orders.remove(i);
-                this.sellOrders.get(order.getStock()).remove(order);
-                i--;
-            }
-        }
-    }
-
     public boolean isTradingHours() {
         // Get the current time
         LocalTime currentTime = LocalTime.now();
@@ -207,7 +193,7 @@ public class TradingEngine {
         LocalTime startMorning = LocalTime.of(9, 0);
         LocalTime endMorning = LocalTime.of(12, 30);
         LocalTime startAfternoon = LocalTime.of(14, 30);
-        LocalTime endAfternoon = LocalTime.of(17, 0);
+        LocalTime endAfternoon = LocalTime.of(19, 30);
 
         // Check if the current time is within the trading hours
         boolean isMorningSession = currentTime.isAfter(startMorning) && currentTime.isBefore(endMorning);
@@ -231,23 +217,30 @@ public class TradingEngine {
         for (int i = 0; i < stocks.size(); i++) {
             Stock stock = stocks.get(i);
             if (stock.getSymbol() == symbol) {
-               return price= stock.getPrice();
+                return price = stock.getPrice();
             }
 
         }
-    return 0;
+        return 0;
     }
-
 
 
     public void updatePrices() {
         for (Stock stock : stocks) {
             // Update the stock price based on some market data source
-            double newPrice = 1; // Get the new price from some market data source
-            stock.setPrice(newPrice);
+            stock.getPrice();
             tryExecuteBuyOrders(stock, new PortFolio()); // clear the previous user
             tryExecuteSellOrders(stock, new PortFolio());
         }
+    }
+    public List<Order> getPendingOrders() {
+        return pendingOrders;
+    }
+    public Map<Stock, List<Order>> getSellOrders() {
+        return sellOrders;
+    }
+    public void getStocklist(){
+        System.out.println(stocks);
     }
 
     public void replenishLotPool() { //this is just the basic method, havent implemented a timer since idk how its gonna be used :p
@@ -255,5 +248,28 @@ public class TradingEngine {
             lotPool.put(stock, 500); // Replenish the lot pool for each stock with 500 shares
         }
     }
-    
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Stocklist2 stocklist = new Stocklist2();
+        Price2 price2 = new Price2();
+        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
+        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
+//        tradingEngine.getStocklist();
+        TradingApp ta= new TradingApp(tradingEngine);
+        Order.Type buy = Order.Type.BUY;
+        Order.Type sell = Order.Type.SELL;
+        Order.Position market = Order.Position.MARKET;
+        Order.Position limit = Order.Position.LIMIT;
+        Stock stock = new Stock("4715.KL");
+        Order order = new Order(stock, buy, market, 500);
+        Order order1 = new Order(stock, sell, market, 100);
+        User user = new User("LiChee", "lichee03@gmail.com", "12345");
+        System.out.println(order.toString());
+        ta.placeOrder(user,order);
+        System.out.println("Name: "+ user.getName()+"\nEmail: "+user.getEmail()+"\nCurrent Holdings : "+user.getPortfolio().getHoldings() +"\nAcoount Balance: "+user.getPortfolio().getAccountBalance());
+        ta.placeOrder(user,order1);
+        System.out.println("Name: "+ user.getName()+"\nEmail: "+user.getEmail()+"\nCurrent Holdings : "+user.getPortfolio().getHoldings() +"\nAcoount Balance: "+user.getPortfolio().getAccountBalance());
+    }
 }
+
