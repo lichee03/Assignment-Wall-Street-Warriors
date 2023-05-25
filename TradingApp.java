@@ -18,8 +18,8 @@ public class TradingApp {
     private List<Order> pendingOrders;
 
 
-    public TradingApp(List<User> users, TradingEngine tradingEngine) {
-        this.users = users;
+    public TradingApp(TradingEngine tradingEngine) {
+       // this.users = users;
        this.tradingEngine = tradingEngine;
     }
 
