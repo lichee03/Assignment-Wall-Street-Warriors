@@ -1,10 +1,12 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
+ */
 package wallstreetwarriors;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
 
 public class LogIn {
@@ -26,7 +28,7 @@ public class LogIn {
         if (isMatchFound) {
             System.out.println("Logged in successfully!");
         } else {
-            System.out.println("Incorrect email address or password. Please try again.janice@");
+            System.out.println("Incorrect email address or password. Please try again.");
         }
 
         scanner.close();
@@ -55,4 +57,7 @@ public class LogIn {
         return false;
     }
 }
-}
+
+
+
+

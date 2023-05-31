@@ -40,33 +40,19 @@ public class CreateAccount {
         TradingAccount account = createAccount(name, email, password);
         String fileName = "list of accounts.txt";
         String[] lines = {name, email, password};
-
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
-            for (String line : lines) {
-                writer.write(line + " ");
+        try(PrintWriter outputStream = new PrintWriter(new FileOutputStream("C:\\Users\\Admin\\OneDrive\\Documents\\NetBeansProjects\\WallStreetWarriors\\list of accounts.txt",true))){
+            outputStream.println();
+            for(String i : lines){
+                outputStream.print(i + " ");
             }
+            outputStream.close();
             System.out.println("Data written to " + fileName);
         } catch (IOException e) {
             System.err.println("Error writing to " + fileName + ": " + e.getMessage());
         }
         
             System.out.println("Congratulations! Your trading account has been created successfully.");
-            // 2. Log in to the app
-            System.out.println("Please enter your account credentials to log in to the trading competition app.");
-        
-            System.out.print("Enter your email address: ");
-            String loginEmail = scanner.nextLine();
-        
-            System.out.print("Enter your password: ");
-            String loginPassword = scanner.nextLine();
-        
-            if (account.getEmail().equals(loginEmail) && account.getPassword().equals(loginPassword)) {
-                System.out.println("Logged in successfully!");
-                // Code for the trading competition app can be added here
-            } else {
-                System.out.println("Incorrect email address or password. Please try again.");
-            }
-        
+            
         scanner.close();
     
     }
