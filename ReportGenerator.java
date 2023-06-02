@@ -25,8 +25,8 @@ public class ReportGenerator {
     // Method to generate a report for a specific user in the specified format
     public static void generateReport(User user, String format) {
         try {
-            // Create a new file with the user's ID as the file name
-            File file = new File(user.getId() + "." + format);
+            // Create a new file with the user's name as the file name
+            File file = new File(user.getName() + "." + format);
 
             switch (format) {
                 case "txt":
@@ -41,7 +41,7 @@ public class ReportGenerator {
             }
 
             // Print a success message
-            System.out.println("Report generated for user " + user.getId() + " in " + format + " format");
+            System.out.println("Report generated for user " + user.getName() + " in " + format + " format");
 
         } catch (IOException e) {
             // Handle any exceptions
@@ -52,10 +52,9 @@ public class ReportGenerator {
     private static void generateTextReport(User user, File file) throws IOException {
         try (FileWriter writer = new FileWriter(file)) {
             // Write the header row
-            writer.write("User ID, Account Balance, Total Profit/Loss, Number of Trades, Winning Trades, Losing Trades\n");
+            writer.write("User Name, Account Balance, Placeholder PnL, Placeholder Trades, Placeholder Winning Trades, Placeholder Losing Trades\n");
             // Write the data for the user
-            writer.write(user.getId() + "," + user.getAccountBalance() + "," + user.getTotalPnL() + ","
-                    + user.getNumTrades() + "," + user.getWinningTrades() + "," + user.getLosingTrades() + "\n");
+            writer.write(user.getName() + "," + user.getCurrentAccountBalance() + ",0,0,0,0\n");
         }
     }
 
@@ -70,9 +69,9 @@ public class ReportGenerator {
         // Create a table for the data
         Table table = new Table(6);
         // Add the header row
-        addCellsToTable(table, "User ID", "Account Balance", "Total Profit/Loss", "Number of Trades", "Winning Trades", "Losing Trades");
+        addCellsToTable(table, "User Name", "Account Balance", "Placeholder PnL", "Placeholder Trades", "Placeholder Winning Trades", "Placeholder Losing Trades");
         // Add the data for the user
-        addCellsToTable(table, user.getId(), Double.toString(user.getAccountBalance()), Double.toString(user.getTotalPnL()), Integer.toString(user.getNumTrades()), Integer.toString(user.getWinningTrades()), Integer.toString(user.getLosingTrades()));
+        addCellsToTable(table, user.getName(), Double.toString(user.getCurrentAccountBalance()), "0", "0", "0", "0");
         // Add the table to the document
         document.add(table);
         // Close the document
@@ -117,11 +116,10 @@ public class ReportGenerator {
     private static void generateTextReportForAllUsers(List<User> userList, File file) throws IOException {
         try (FileWriter writer = new FileWriter(file)) {
             // Write the header row
-            writer.write("User ID, Account Balance, Total Profit/Loss, Number of Trades, Winning Trades, Losing Trades\n");
+            writer.write("User Name, Account Balance, Placeholder PnL, Placeholder Trades, Placeholder Winning Trades, Placeholder Losing Trades\n");
             // Write the data for each user
             for (User user : userList) {
-                writer.write(user.getId() + "," + user.getAccountBalance() + "," + user.getTotalPnL() + ","
-                        + user.getNumTrades() + "," + user.getWinningTrades() + "," + user.getLosingTrades() + "\n");
+                writer.write(user.getName() + "," + user.getCurrentAccountBalance() + ",0,0,0,0\n");
             }
         }
     }
@@ -137,11 +135,11 @@ public class ReportGenerator {
         // Create a table for the data
         Table table = new Table(6);
         // Add the header row
-        addCellsToTable(table, "User ID", "Account Balance", "Total Profit/Loss", "Number of Trades", "Winning Trades", "Losing Trades");
+        addCellsToTable(table, "User Name", "Account Balance", "Placeholder PnL", "Placeholder Trades", "Placeholder Winning Trades", "Placeholder Losing Trades");
 
         // Add the data for each user
         for (User user : userList) {
-            addCellsToTable(table, user.getId(), Double.toString(user.getAccountBalance()), Double.toString(user.getTotalPnL()), Integer.toString(user.getNumTrades()), Integer.toString(user.getWinningTrades()), Integer.toString(user.getLosingTrades()));
+            addCellsToTable(table, user.getName(), Double.toString(user.getCurrentAccountBalance()), "0", "0", "0", "0");
         }
 
         // Add the table to the document
