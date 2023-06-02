@@ -50,6 +50,11 @@ public class User {
         public List<Order> getTransactionHistory() {
             return transactionHistory;
         }
+        
+        public double getCurrentAccountBalance() {
+                return currentAccountBalance;
+        }
+        
     }
 
 
