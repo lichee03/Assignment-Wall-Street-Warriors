@@ -54,4 +54,9 @@ public class PortFolio {
         return accountBalance;
     }
 
+     public boolean hasStock(Stock stock, int quantity) {
+        Integer currentQuantity = holdings.getOrDefault(stock, 0);
+        return currentQuantity >= quantity;
+    }
+    
 }
