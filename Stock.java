@@ -95,4 +95,20 @@ public class Stock implements Comparable<Stock> {
         this.price=price2.getPrices();
         return priceUpdated=true;
     }
+    
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+
+    public int getAverageVolume() {
+        return averageVolume;
+    }
+
+    public double getPreviousDayClosePrice() {
+        return previousDayClosePrice;
+    }
+
+    public int getDailyVolume() {
+        return dailyVolume;
+    }
 }
