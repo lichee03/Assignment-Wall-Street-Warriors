@@ -1,49 +1,58 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
- */
 package wallstreetwarriors;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
-import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-/**
- *
- * @author Admin
- */
-public class LogIn extends CreateAccount{
+
+public class LogIn {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        
-        // 2. Log in to the app
-            System.out.println("Please enter your account credentials to log in to the trading competition app.");
-        
-            System.out.print("Enter your email address: ");
-            String loginEmail = scanner.nextLine();
-        
-            System.out.print("Enter your password: ");
-            String loginPassword = scanner.nextLine();
-        String filePath = "C:/Users/Admin/OneDrive/Documents/NetBeansProjects/WallStreetWarriors/list of accounts.txt";
+        String filePath = "C:\\Users\\Admin\\OneDrive\\Documents\\NetBeansProjects\\WallStreetWarriors\\list of accounts.txt";
 
+        // Get the email and password from user input
+        System.out.print("Enter the email: ");
+        String email = scanner.nextLine();
+
+        System.out.print("Enter the password: ");
+        String password = scanner.nextLine();
+
+        // Find matching email and password pairs in the file
+        boolean isMatchFound = findMatchingEmailPasswordPairs(filePath, email, password);
+
+        if (isMatchFound) {
+            System.out.println("Logged in successfully!");
+        } else {
+            System.out.println("Incorrect email address or password. Please try again.janice@");
+        }
+
+        scanner.close();
+    }
+
+    public static boolean findMatchingEmailPasswordPairs(String filePath, String email, String password) {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
-            Pattern pattern = Pattern.compile("\\b" + loginEmail + " " + loginPassword + "\\b"); // create a pattern for the target word
+
             while ((line = reader.readLine()) != null) {
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.find()) {
-                    System.out.println("Logged in successfully!");
-                // Code for the trading competition app can be added here
-                } else {
-                    System.out.println("Incorrect email address or password. Please try again.");
+                String[] credentials = line.split(" ");
+
+                if (credentials.length == 3) {
+                    String storedEmail = credentials[1].trim();
+                    String storedPassword = credentials[2].trim();
+
+                    if (storedEmail.equals(email) && storedPassword.equals(password)) {
+                        return true;
+                    }
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("An error occurred while reading the file: " + e.getMessage());
         }
-        
-        scanner.close();
+
+        return false;
     }
-    
+}
 }

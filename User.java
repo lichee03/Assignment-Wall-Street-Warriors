@@ -48,9 +48,11 @@ public class User {
         public Queue<Order> getTransactionHistory() {
             return transactionHistory;
         }
+        
         public double getCurrentAccountBalance() {
-            return currentAccountBalance;
-    }
+                return currentAccountBalance;
+        }
+        
     }
 
 

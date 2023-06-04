@@ -20,11 +20,19 @@ public class Stock implements Comparable<Stock> {
     private Price2 price2 ;
     private Stocklist2 stocklist;
     private boolean priceUpdated=false;
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 5e0921c997372f38e559de2d9e0cd6a617bde6a2
     private double currentPrice;
     private int averageVolume;
     private double previousDayClosePrice;
     private int dailyVolume;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 5e0921c997372f38e559de2d9e0cd6a617bde6a2
     public Stock(String symbol) {
         this.symbol = symbol;
     }
@@ -100,7 +108,7 @@ public class Stock implements Comparable<Stock> {
         this.price=price2.getPrices();
         return priceUpdated=true;
     }
-
+    
     public double getCurrentPrice() {
         return currentPrice;
     }
