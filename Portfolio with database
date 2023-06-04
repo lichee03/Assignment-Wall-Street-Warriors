@@ -1,0 +1,83 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+/**
+ * @author lichee
+ */
+public class PortFolio {
+
+    private final double INITIALFUND = 500000;
+    private Map<Stock, Integer> holdings;
+    private double accountBalance;
+    private boolean disqualified;
+    private User user;
+    private Database database;
+
+    public PortFolio(User user) {
+        this.user = user;
+        holdings = new HashMap<>();
+        this.accountBalance = INITIALFUND;
+        this.disqualified = false;
+        database = new Database();
+
+    }
+
+    public void addStock(Stock stock, int shares, double price) {
+        if (database.readHoldings(stock.getSymbol())) {
+            holdings = database.retriveHoldings();
+            int currentShares = holdings.getOrDefault(stock, 0);
+            int newShares = currentShares + shares;
+            database.updateHoldings(user.getName(), stock.getSymbol(), newShares);
+        } else {
+            database.insertHoldings(user.getName(), stock.getSymbol(), shares);
+        }
+        accountBalance = database.retriveAccbalance(user.getName());
+        this.accountBalance -= price * shares;
+        database.updateAccbalance(user.getName(), accountBalance);
+    }
+
+    public void removeStock(Stock stock, int shares, double price) {
+        holdings = database.retriveHoldings();
+        int currentShares = holdings.getOrDefault(stock, 0);
+        int newShares = currentShares - shares;
+        database.updateHoldings(user.getName(), stock.getSymbol(), newShares);
+
+        accountBalance = database.retriveAccbalance(user.getName());
+        this.accountBalance += price * shares;
+        database.updateAccbalance(user.getName(), accountBalance);
+    }
+
+
+    public Map<Stock, Integer> getHoldings() {
+        return database.retriveHoldings();
+    }
+
+    public double getValue() {
+        double value = 0.0;
+        for (Map.Entry<Stock, Integer> entry : holdings.entrySet()) {
+            Stock stock = entry.getKey();
+            int shares = entry.getValue();
+            value += stock.getPrice() * shares;
+        }
+        return value;
+    }
+
+    public double getAccountBalance() {
+        return database.retriveAccbalance(user.getName());
+    }
+
+    public User getUser() {
+        return user;
+    }
+}
+
