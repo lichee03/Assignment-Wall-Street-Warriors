@@ -1,0 +1,79 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Scanner;
+
+/**
+ * @author lichee
+ */
+public class TradingApp {
+
+    private static TradingEngine tradingEngine;
+private static PortFolio portfolio ;
+private static AdminPanel adminPanel;
+
+    public TradingApp(TradingEngine tradingEngine) {
+        this.tradingEngine = tradingEngine;
+    }
+
+
+    public static void setOrder(User user) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.println("1: Buy \n2: Sell");
+        int type = sc.nextInt();
+        Order.Type orderType = null;
+        switch (type) {
+            case 1:
+                orderType = Order.Type.BUY;
+                break;
+            case 2:
+                orderType = Order.Type.SELL;
+                break;
+            default:
+                System.out.println("Invalid option. Exiting.");
+                return;
+        }
+
+        System.out.println("1: Market \n2: Limit");
+        int position = sc.nextInt();
+        Order.Position orderPosition = null;
+        switch (position) {
+            case 1:
+                orderPosition = Order.Position.MARKET;
+                break;
+            case 2:
+                orderPosition = Order.Position.LIMIT;
+                break;
+            default:
+                System.out.println("Invalid option. Exiting.");
+                return;
+        }
+
+        sc.nextLine(); // Consume the newline character
+
+        System.out.println("Enter stock symbol: ");
+        String symbol = sc.nextLine();
+        System.out.println("Enter amount of shares: ");
+        int shares = sc.nextInt();
+        Stock stock = new Stock(symbol);
+        Order order = new Order(stock, orderType, orderPosition, shares);
+        placeOrder(user,order);
+    }
+
+    public static void placeOrder(User user, Order order) {
+        portfolio= new PortFolio(user);
+        tradingEngine.executeOrder(order, portfolio);
+        if(tradingEngine.isClosingTime()){
+            adminPanel.checkAccountBalance();
+        }
+
+    }
+
+    public void updatePendingOrder(User user) {
+        System.out.println(tradingEngine.getPendingOrders(user));
+
+    }
+
+
+}
