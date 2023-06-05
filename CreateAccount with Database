@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.io.*;
 import java.util.regex.Matcher;
@@ -61,6 +63,13 @@ public class CreateAccount {
 
     public static void Login() {
         Scanner scanner = new Scanner(System.in);
+        Stocklist2 stocklist = new Stocklist2();
+        Price2 price2 = new Price2();
+        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
+        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
+        TradingApp tradingapp = new TradingApp(tradingEngine);
+        PortFolio portfolio = new PortFolio(user);
+        Database database = new Database();
         // 2. Log in to the app
         System.out.println("Please enter your account credentials to log in to the trading competition app.");
 //
@@ -78,16 +87,18 @@ public class CreateAccount {
             System.out.println("Logged in successfully!");
             user=database.retriveUser(loginEmail);
             portfolio= new PortFolio(user);
-            System.out.println("1: place order \n 2: pending order \n 3: cancel order \n 4. Ranking \n 5. Stock search \n 6. Trading Dashboard");
+            System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
             int num = scanner.nextInt();
 
             while (true) {
                 switch (num) {
                     case 1:
-                        tradingApp.setOrder(user);
+                        tradingEngine.CheckPendingOrder(portfolio);//keep checking
+                        tradingapp.setOrder(portfolio.getUser());
                         break;
                     case 2:
-                        tradingApp.updatePendingOrder(user);
+                        tradingEngine.CheckPendingOrder(portfolio);
+                        tradingapp.updatePendingOrder(portfolio.getUser());
                         break;
                     case 3:
                         System.out.println("1. Cancel order base on longest time \n 2. Cancel order base on highest amount of money");
@@ -99,11 +110,23 @@ public class CreateAccount {
                                 break;
                             case 2:
                                 criterias = TradingEngine.Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY;
+                                break;
                         }
                         tradingEngine.cancelPendingOrder(criterias,portfolio);
+                        tradingEngine.CheckPendingOrder(portfolio); //keep checking the condition
+                        break;
+                    case 4:
+                        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+                        break;
+                    case 8:
+                        System.out.println("Order History: ");
+                        System.out.println(database.retriveOrderHistory(user));
+                        break;
+                    case 9:
+                        return;
                 }
-                System.out.println("1: place order \n 2: pending order \n 3: cancel order \n 4. Ranking \n 5. Stock search \n 6. Trading Dashboard");
-
+                System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
+                num = scanner.nextInt();
             }
         } else {
             System.out.println("Incorrect email address or password. Please try again.");
@@ -141,6 +164,9 @@ public class CreateAccount {
         return true;
     }
 }
+
+
+
 
 
 
