@@ -20,6 +20,11 @@ public class Stock implements Comparable<Stock> {
     private Price2 price2 ;
     private Stocklist2 stocklist;
     private boolean priceUpdated=false;
+    private double currentPrice;
+    private int averageVolume;
+    private double previousDayClosePrice;
+    private int dailyVolume;
+
     public Stock(String symbol) {
         this.symbol = symbol;
     }
@@ -38,11 +43,11 @@ public class Stock implements Comparable<Stock> {
     }
 
     public String getName() {
-        return symbol;
+        return name;
     }
 
     public String getCurrency() {
-        return symbol;
+        return currency;
     }
 
     public String getExchange() {
@@ -50,15 +55,15 @@ public class Stock implements Comparable<Stock> {
     }
 
     public String getMic() {
-        return symbol;
+        return mic;
     }
 
     public String getCountry() {
-        return symbol;
+        return country;
     }
 
     public String getType() {
-        return symbol;
+        return type;
     }
 
 
@@ -94,5 +99,21 @@ public class Stock implements Comparable<Stock> {
         price2.fetchData(getSymbol());
         this.price=price2.getPrices();
         return priceUpdated=true;
+    }
+
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+
+    public int getAverageVolume() {
+        return averageVolume;
+    }
+
+    public double getPreviousDayClosePrice() {
+        return previousDayClosePrice;
+    }
+
+    public int getDailyVolume() {
+        return dailyVolume;
     }
 }

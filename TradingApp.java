@@ -4,23 +4,28 @@
  */
 
 
-import java.util.List;
-import java.time.LocalDateTime;
-import java.util.Comparator;
-
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 /**
  * @author lichee
  */
 public class TradingApp {
 
-    private static List<User> users;
+    private List<User> users;
     private TradingEngine tradingEngine;
-    private List<Order> pendingOrders;
+    private Set<Stock> stocksToUpdate;
+    private ScheduledExecutorService executorService;
+    private final int INTERVAL_MINUTES = 5;
 
 
-    public TradingApp(TradingEngine tradingEngine) {
-       // this.users = users;
+    public TradingApp(TradingEngine tradingEngine, List<User> users) {
+       this.users = users;
        this.tradingEngine = tradingEngine;
+       stocksToUpdate = new HashSet<>();
+       executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.scheduleAtFixedRate(this::updatePricesAndPoints, 0, INTERVAL_MINUTES, TimeUnit.MINUTES); //runs updatePricesAndPoints method every 5 minutes
     }
 
     public User login(String email, String password) {
@@ -33,44 +38,33 @@ public class TradingApp {
     }
 
     public void placeOrder(User user, Order order) {
-        tradingEngine.executeOrder(order, user.getPortfolio());
-
+        tradingEngine.executeOrder(order, user);
     }
     public void UpdateOrderBook(){
         System.out.println("Current Order Book: ");
         tradingEngine.getSellOrders();
     }
-    public void updatePendingOrder(){
-        System.out.println("Current Order Boook: ");
-        tradingEngine.getPendingOrders();
-    }
 
-    public void updateAllUserPoints(){
+    public void updatePricesAndPoints(){
+        updatePrices();
         for (User user : users){
             updatePoints(user);
         }
     }
-    private void updatePoints(User user) { //to be used with the API, updates the points for ***a user***
-        double pnl = 0.0;
-        for (Order order : user.getTransactionHistory()) { //Iterates thru all the user's buy/sell orders
-            Stock stock = order.getStock();
-            int shares = order.getShares();
-            double purchasePrice = order.getPrice(); //price of stock during the order
-            double currentPrice = stock.getPrice(); //current price of the stock
-            if (order.getType() == Order.Type.BUY) {
-                pnl += (currentPrice - purchasePrice) * shares;
-            } else if (order.getType() == Order.Type.SELL) {
-                pnl -= (currentPrice - purchasePrice) * shares;
-            }
+    private void updatePoints(User user) { //ipdates points for a user
+        user.points = (((user.getPortfolio().getValue()+user.getPortfolio().getAccountBalance())-50000)/50000)*100;
+    }
+
+    public void updatePrices() {
+        // Collect all the stocks owned by users (so we dont need to update EVERY stock, just the ones that are owned)
+        for (User user : users) {
+            Map<Stock, Integer> holdings = user.getPortfolio().getHoldings();
+            stocksToUpdate.addAll(holdings.keySet());
         }
-        if (pnl > 0) {
-            user.points += (int) Math.round(pnl);
-        } else {
-            user.points -= (int) Math.round(Math.abs(pnl));
+        // Update prices for the selected stocks
+        for (Stock stock : stocksToUpdate) {
+            stock.getPrice();
         }
     }
     
-
-
-
 }

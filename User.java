@@ -1,6 +1,4 @@
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 public class User {
 
 
@@ -11,17 +9,17 @@ public class User {
         private boolean disqualified = false;
         private double startingAccountBalance;
         private double currentAccountBalance;
-        public int points;
+        public double points;
 
-        private List<Order> transactionHistory; 
+        private Queue<Order> transactionHistory; 
 
         public User(String name, String email, String password) {
             this.name = name;
-            this.email = email;
+            this.email = email; 
             this.password = password;
             this.portfolio = new PortFolio();
             points = 0;
-            transactionHistory = new ArrayList<>();
+            transactionHistory = new LinkedList<>();
         }
 
         public String getName() {
@@ -41,15 +39,18 @@ public class User {
         }
 
         public void Disqualified(boolean disqualified) {
-            disqualified = disqualified;
+            disqualified = true;
         }
 
         public boolean CheckDisqualified() {
             return disqualified;
         }
-        public List<Order> getTransactionHistory() {
+        public Queue<Order> getTransactionHistory() {
             return transactionHistory;
         }
+        public double getCurrentAccountBalance() {
+            return currentAccountBalance;
+    }
     }
 
 
