@@ -1,3 +1,9 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -8,21 +14,28 @@ import java.util.Scanner;
  */
 public class TradingApp {
 
-    private static TradingEngine tradingEngine;
-private static PortFolio portfolio ;
-private static AdminPanel adminPanel;
+    private TradingEngine tradingEngine;
+    private PortFolio portfolio;
+    private AdminPanel adminPanel;
+    private List<Order> orderHistory;
+    private Database database;
 
     public TradingApp(TradingEngine tradingEngine) {
         this.tradingEngine = tradingEngine;
+
     }
 
 
-    public static void setOrder(User user) {
+    public void setOrder(User user) {
         Scanner sc = new Scanner(System.in);
+        System.out.println("Enter stock symbol: ");
+        String symbol = sc.nextLine().toUpperCase(); // Convert symbol to uppercase for consistency
+        System.out.println("Enter amount of shares: ");
+        int shares = sc.nextInt();
 
-        System.out.println("1: Buy \n2: Sell");
+        System.out.println("1: Buy\n2: Sell");
         int type = sc.nextInt();
-        Order.Type orderType = null;
+        Order.Type orderType;
         switch (type) {
             case 1:
                 orderType = Order.Type.BUY;
@@ -35,9 +48,9 @@ private static AdminPanel adminPanel;
                 return;
         }
 
-        System.out.println("1: Market \n2: Limit");
+        System.out.println("1: Market\n2: Limit");
         int position = sc.nextInt();
-        Order.Position orderPosition = null;
+        Order.Position orderPosition;
         switch (position) {
             case 1:
                 orderPosition = Order.Position.MARKET;
@@ -50,21 +63,22 @@ private static AdminPanel adminPanel;
                 return;
         }
 
-        sc.nextLine(); // Consume the newline character
-
-        System.out.println("Enter stock symbol: ");
-        String symbol = sc.nextLine();
-        System.out.println("Enter amount of shares: ");
-        int shares = sc.nextInt();
-        Stock stock = new Stock(symbol);
-        Order order = new Order(stock, orderType, orderPosition, shares);
-        placeOrder(user,order);
+        if (orderPosition == Order.Position.LIMIT) {
+            System.out.println("Enter price: ");
+            double price = sc.nextDouble();
+            Order order = new Order(new Stock(symbol), orderType, orderPosition, shares, price);
+            placeOrder(user, order);
+        } else {
+            Order order = new Order(new Stock(symbol), orderType, orderPosition, shares);
+            placeOrder(user, order);
+        }
     }
-
-    public static void placeOrder(User user, Order order) {
-        portfolio= new PortFolio(user);
+    public void placeOrder(User user, Order order) {
+        database = new Database();
+        database.insertOrderHistory(order, user);
+        portfolio = new PortFolio(user);
         tradingEngine.executeOrder(order, portfolio);
-        if(tradingEngine.isClosingTime()){
+        if (tradingEngine.isClosingTime()) {
             adminPanel.checkAccountBalance();
         }
 
