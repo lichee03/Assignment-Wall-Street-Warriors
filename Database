@@ -390,6 +390,89 @@ public class Database{
             e.printStackTrace();
         }
     }
+    public void insertOrderHistory(Order order, User user) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "INSERT INTO OrderHistory (Name, OrderPosition, OrderType, StockSymbol, OrderPrice, Shares, OrderTime) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            // Set the values for the parameters in the prepared statement
+            statement.setString(1, user.getName());
+            statement.setString(2, order.getPosition().toString());
+            statement.setString(3, order.getType().toString());
+            statement.setString(4, order.getStock().getSymbol());
+            statement.setDouble(5, order.getPrice());
+            statement.setInt(6, order.getShares());
+            statement.setString(7, order.getTime());
+
+
+            // Execute the query
+            int rowsAffected = statement.executeUpdate();
+            System.out.println("Rows affected: " + rowsAffected);
+
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error inserting data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public void updateOrderHistory(int orderId,String status) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "UPDATE OrderHistory SET Status = ? WHERE OrderID = ?";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            // Set the new values for the columns
+            statement.setString(1, status);
+            statement.setInt(2, orderId);
+            // Execute the update statement
+            int rowsAffected = statement.executeUpdate();//can be deleted after debugging
+            System.out.println("Rows affected: " + rowsAffected);
+
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error updating data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    public List<Order> retriveOrderHistory(User user) {
+        List<Order> orderHistory = new ArrayList<>();
+        Order order = null;
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "SELECT OrderID, Name, OrderPosition, OrderType, StockSymbol, OrderPrice, Shares, OrderTime, Status FROM OrderHistory";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            // Process the result set
+            while (resultSet.next()) {
+                int Did=resultSet.getInt("OrderID");
+                String Dname = resultSet.getString("Name");
+                String Dposition = resultSet.getString("OrderPosition");
+                String Dtype = resultSet.getString("OrderType");
+                String Dsymbol = resultSet.getString("StockSymbol");
+                double Dprice = resultSet.getDouble("OrderPrice");
+                int Dshare = resultSet.getInt("Shares");
+                String Dtime = resultSet.getString("OrderTime");
+                String Dstatus= resultSet.getString("Status");
+                if (Dname.equals(user.getName())) {
+                    Stock stock = new Stock(Dsymbol);
+                    Order.Position position = getPositionFromString(Dposition);
+                    Order.Type type = getTypeFromString(Dtype);
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+                    LocalDateTime dateTime = LocalDateTime.parse(Dtime, formatter);
+                    order= new Order(Did,stock,type,position,Dshare,Dprice,dateTime);
+                    orderHistory.add(order);
+
+                }
+            }
+            resultSet.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error retrieving data: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return orderHistory;
+
+    }
     }
 
 
