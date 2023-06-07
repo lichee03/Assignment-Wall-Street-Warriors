@@ -51,7 +51,7 @@ public class TradingApp {
             updatePoints(user);
         }
     }
-    private void updatePoints(User user) { //ipdates points for a user
+    public void updatePoints(User user) { //ipdates points for a user
         user.points = (((user.getPortfolio().getValue()+user.getPortfolio().getAccountBalance())-50000)/50000)*100;
     }
 
