@@ -4,15 +4,11 @@
  */
 
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * @author lichee
- */
 public class AdminPanel { //link to User authentification
     private List<User> users;
     private TradingEngine tradingEngine;
+    private PortFolio portfolio;
+    private Database database= new Database();
 
     public AdminPanel() {
         users = new ArrayList<>();
@@ -34,9 +30,10 @@ public class AdminPanel { //link to User authentification
 
 
     public void disqualifyUser(String username) {
+        users=database.retriveUserList();
         for (User user : users) {
             if (user.getName().equals(username)) {
-                user.Disqualified(true);
+                user.Disqualified();
                 break;
             }
         }
@@ -45,9 +42,11 @@ public class AdminPanel { //link to User authentification
 
 
     public void checkAccountBalance() {
+        users=database.retriveUserList();
         for (User user : users) {
-            if (!user.CheckDisqualified()) {
-                double accountBalance = user.getPortfolio().getAccountBalance();
+            if (user.getStatus()!="disqualified") {
+                portfolio= new PortFolio(user);
+                double accountBalance = portfolio.getAccountBalance();
                 if (accountBalance >= 0.5 * 500000&& accountBalance<0) {
                     disqualifyUser(user.getName());
                 }
