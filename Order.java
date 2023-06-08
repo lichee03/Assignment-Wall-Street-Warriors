@@ -1,12 +1,7 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- *
  * @author lichee
  */
 public class Order {
@@ -15,17 +10,47 @@ public class Order {
         BUY,
         SELL
     }
-    private Stock stock; 
+
+
+    public enum Position {
+        MARKET,
+        LIMIT
+    }
+
+    private Stock stock;
     private Type type;
+    private Position position;
     private int shares;
     private double price;
+    private int id;
     private LocalDateTime time;
-    public Order(Stock stock, Type type,int shares, double price) {
+
+    public Order(Stock stock, Type type, Position position, int shares, double price) {
         this.stock = stock;
         this.type = type;
+        this.position = position;
         this.shares = shares;
         this.price = price;
-        this.time=LocalDateTime.now();
+        this.time = LocalDateTime.now();
+    }
+
+    public Order(Stock stock, Type type, Position position, int shares) {
+        this.stock = stock;
+        this.type = type;
+        this.position = position;
+        this.shares = shares;
+        this.price = getStock().getPrice();
+        this.time = LocalDateTime.now();
+    }
+
+    public Order(int did, Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime) {
+        this.id = did;
+        this.stock = stock;
+        this.type = type;
+        this.position = position;
+        this.shares = dshare;
+        this.price = dprice;
+        this.time = dateTime;
     }
 
     public Stock getStock() {
@@ -36,19 +61,37 @@ public class Order {
         return type;
     }
 
+    public Position getPosition() {
+        return position;
+    }
+
     public int getShares() {
         return shares;
+    }
+    public int getID() {
+        return id;
     }
 
     public double getPrice() {
         return price;
     }
-    public double getValue(){
-        return price*shares;
+
+    public double getValue() {
+        return price * shares;
     }
-    public LocalDateTime getTime(){
-        return time;
+
+    public String getTime() {
+        DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+
+        String formattedtime = time.format(myFormatObj);
+        return formattedtime;
+    }
+
+    public String toString() {
+        return "Order submitted on " + getTime() + "\nType: " + getType() + "\nPosition: " + getPosition() + "\nPrice: " + getPrice() + "\nShare: " + getShares()+"\n";
+
     }
 }
+
 
 
