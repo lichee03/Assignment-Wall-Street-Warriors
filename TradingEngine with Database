@@ -1,10 +1,8 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author lichee
@@ -17,9 +15,12 @@ public class TradingEngine {
     private TradingApp tradingApp;
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
     private List<Order> pendingOrders;
+    private List<Order> orderHistory;
 
     private Stocklist2 stocklist;
     private Database database;
+    private ScheduledExecutorService executorService;
+    private final int INTERVAL_HOURS = 24;
 
     public enum Criteria {
         CRITERIA_LONGEST_TIME_LENGTH,
@@ -35,8 +36,12 @@ public class TradingEngine {
         for (Stock stock : stocks) {
             buyOrders.put(stock, new ArrayList<>());
             sellOrders.put(stock, new ArrayList<>());
+            //lotPool.put(stock, 50000); //each stock have 500lots
         }
+        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.scheduleAtFixedRate(this::replenishLotPool, 0, INTERVAL_HOURS, TimeUnit.HOURS);;
     }
+
 
     public void executeOrder(Order order, PortFolio portfolio) {
         String symbol = order.getStock().getSymbol();
@@ -49,12 +54,12 @@ public class TradingEngine {
         int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500;
         // Check if the stock exists in the buyOrders map
         if (!buyOrders.containsKey(order.getStock())) {
-            buyOrders.put(order.getStock(), new ArrayList<>());
+            buyOrders.put(order.getStock(), new LinkedList<>());
         }
 
         // Check if the stock exists in the sellOrders map
         if (!sellOrders.containsKey(order.getStock())) {
-            sellOrders.put(order.getStock(), new ArrayList<>());
+            sellOrders.put(order.getStock(), new LinkedList<>());
         }
         if (!isTradingHours()) {
             System.out.println("Trading is currently closed. Please try again during trading hours.");
@@ -89,6 +94,7 @@ public class TradingEngine {
 
     public void tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
         List<Order> orders = buyOrders.get(stock);
+        orderHistory= database.retriveOrderHistory(portfolio.getUser());
         double price = stock.getPrice();
         for (int i = 0; i < orders.size(); i++) {
             Order order = orders.get(i);
@@ -100,6 +106,8 @@ public class TradingEngine {
                     this.buyOrders.get(order.getStock()).remove(order);
                     i--;
                     System.out.println("Buy Order completed");
+                    database.updateOrderHistory(order.getID(),"completed");
+                    System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
                 } else {
                     System.out.println("Current Account Balance not enough.Order Failed.");
                     orders.remove(i);
@@ -107,9 +115,10 @@ public class TradingEngine {
                     i--;
                 }
             } else {
-                System.out.println("Buy Order price must be more than or equal to the current stock price. com.example.testing1.WallStreet.Stock.Order Failed");
+                System.out.println("Buy Order price must be more than or equal to the current stock price.Order Failed");
                 orders.remove(i);
                 this.buyOrders.get(order.getStock()).remove(order);
+                database.updateOrderHistory(order.getID(),"failed");
                 i--;
             }
         }
@@ -117,6 +126,7 @@ public class TradingEngine {
 
     public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//update order book
         List<Order> orders = sellOrders.get(stock);
+        orderHistory= database.retriveOrderHistory(portfolio.getUser());
         double price = stock.getPrice();
         for (int i = 0; i < orders.size(); i++) {
             Order order = orders.get(i);
@@ -128,16 +138,20 @@ public class TradingEngine {
                     this.sellOrders.get(order.getStock()).remove(order);
                     i--;
                     System.out.println("Sell Order Completed.");
-                } else {
+                    System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+                    database.updateOrderHistory(order.getID(),"completed");
+                } else {            System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
                     System.out.println("Not enough share to sell.Order failed");
                     orders.remove(i);
                     this.sellOrders.get(order.getStock()).remove(order);
+                    database.updateOrderHistory(order.getID(),"failed");
                     i--;
                 }
             } else {
-                System.out.println("Sell Order price must be equal or less than the current stock price. com.example.testing1.WallStreet.Stock.Order failed.");
+                System.out.println("Sell Order price must be equal or less than the current stock price.Stock.Order failed.");
                 orders.remove(i);
                 this.sellOrders.get(order.getStock()).remove(order);
+                database.updateOrderHistory(order.getID(),"failed");
                 i--;
             }
         }
@@ -145,17 +159,13 @@ public class TradingEngine {
 
     public void CheckPendingOrder(PortFolio portfolio) {  //execute if meet requirement, else store in list
         pendingOrders=database.retrivePendingOrder(portfolio.getUser());
-        System.out.println(pendingOrders);
         for (int i = 0; i < pendingOrders.size(); i++) {
             Order pendingorder = pendingOrders.get(i);
-                System.out.println(pendingorder.getStock().getPrice());
-                System.out.println(pendingorder.getPrice());
             if (pendingorder.getStock().getPrice() == pendingorder.getPrice()) {
                 if (pendingorder.getType() == Order.Type.BUY) {
                     buyOrders.get(pendingorder.getStock()).add(pendingorder); //find order whether its available or not , if available, add order
                     tryExecuteBuyOrders(pendingorder.getStock(), portfolio);
                     database.updatePendingOrder(pendingorder.getID());
-                    System.out.println("id: "+pendingorder.getID());
 
                 } else {
                     sellOrders.get(pendingorder.getStock()).add(pendingorder);
@@ -165,7 +175,6 @@ public class TradingEngine {
                 }
             }
             }
-        System.out.println(database.retrivePendingOrder(portfolio.getUser()));
         }
 
 
@@ -176,8 +185,7 @@ public class TradingEngine {
         if (!pendingOrders.isEmpty()) {
             switch (criterias) {
                 case CRITERIA_LONGEST_TIME_LENGTH:
-                    // Sort the pending orders based on time length in descending order
-                    pendingOrders.sort(Comparator.comparing(Order::getTime).reversed());
+                    // 0 is the first order whhich is the longest
                     Order canceledOrder = pendingOrders.remove(0);
                     database.updatePendingOrder(canceledOrder.getID());
                     System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
@@ -204,7 +212,7 @@ public class TradingEngine {
         DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
 
         // Check if the day falls within the trading week (Monday to Friday)
-        //boolean isTradingDay = (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY);
+        boolean isTradingDay = (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY);
 
         LocalTime startMorning = LocalTime.of(9, 0);
         LocalTime endMorning = LocalTime.of(12, 30);
@@ -215,7 +223,7 @@ public class TradingEngine {
         boolean isMorningSession = currentTime.isAfter(startMorning) && currentTime.isBefore(endMorning);
         boolean isAfternoonSession = currentTime.isAfter(startAfternoon) && currentTime.isBefore(endAfternoon);
 
-        return (isMorningSession || isAfternoonSession); //&& isTradingDay;
+        return (isMorningSession || isAfternoonSession&& isTradingDay);
     }
 
     public boolean isInitialTradingPeriod() {
@@ -235,17 +243,19 @@ public class TradingEngine {
             return isClosingTime;
     }
 
-    public double DisplaySuggestedPrice(String symbol) {
-        double price;
-        for (int i = 0; i < stocks.size(); i++) {
-            Stock stock = stocks.get(i);
-            if (stock.getSymbol() == symbol) {
-                return price = stock.getPrice();
-            }
-
-        }
-        return 0;
+    public void displaySuggestedPrice(Stock stock){
+        double stockPrice = stock.getPrice(); //get current market stock price
+        double acceptableRange = stockPrice * 0.01; // Calculate 1% of the current price
+        double lowerBound = stockPrice - acceptableRange;
+        double upperBound = stockPrice + acceptableRange;
+        System.out.println("Suggested price range for " + stock.getName() + ": " + lowerBound + " - " + upperBound);
     }
+    public void replenishLotPool() { //this is just the basic method, havent implemented a timer since idk how its gonna be used :p
+        for (Stock stock : stocks) {
+            lotPool.put(stock, 500); // Replenish the lot pool for each stock with 500 shares
+        }
+    }
+
 
 
     //    public void updatePrices() {
@@ -263,50 +273,46 @@ public class TradingEngine {
     public void getStocklist() {
         System.out.println(stocks);
     }
-
-    //public void replemnishLot() {
-
-    //}
-
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        Stocklist2 stocklist = new Stocklist2();
-        Price2 price2 = new Price2();
-        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
-        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
-        //tradingEngine.getStocklist();
-        TradingApp ta = new TradingApp(tradingEngine);
-        Order.Type buy = Order.Type.BUY;
-        Order.Type sell = Order.Type.SELL;
-        Criteria time = Criteria.CRITERIA_LONGEST_TIME_LENGTH;
-        Criteria money = Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY;
-
-        Order.Position market = Order.Position.MARKET;
-        Order.Position limit = Order.Position.LIMIT;
-        Stock stock = new Stock("4715.KL");
-        Stock stock2 = new Stock("5302.KL");
-        Order order = new Order(stock, buy, market, 500);
-        Order order1 = new Order(stock2, buy, market, 100);
-        Order order2 = new Order(stock, buy, limit, 500, 2.5);
-        Order order3 = new Order(stock2, buy, limit, 100, 2.18);
-        User user = new User("Chai", "lichee03@gmail.com", "B123456!");
-        PortFolio portfolio = new PortFolio(user);
-        Database database = new Database();
-        System.out.println(order);
-        ta.placeOrder(user, order);
-        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Acoount Balance: " + portfolio.getAccountBalance());
-        System.out.println(order1);
-        ta.placeOrder(user, order1);
-        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Acoount Balance: " + portfolio.getAccountBalance());
-        System.out.println(order2);
-        ta.placeOrder(user, order2);
-        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
-        System.out.println(order3);
-        ta.placeOrder(user, order3);
-        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
-        System.out.println("Current Pending Order: ");
-        ta.updatePendingOrder(user);
-        tradingEngine.CheckPendingOrder(portfolio);
-        tradingEngine.cancelPendingOrder(money,portfolio);
-    }
-}
+     public static void main(String[] args) {
+//        Scanner sc = new Scanner(System.in);
+//        Stocklist2 stocklist = new Stocklist2();
+//        Price2 price2 = new Price2();
+//        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
+//        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
+//        //tradingEngine.getStocklist();
+//        User user = new User("Chai", "lichee03@gmail.com", "B123456!");
+//        PortFolio portfolio = new PortFolio(user);
+//        Database database = new Database();
+//        TradingApp ta = new TradingApp(tradingEngine);
+//        Order.Type buy = Order.Type.BUY;
+//        Order.Type sell = Order.Type.SELL;
+//        Criteria time = Criteria.CRITERIA_LONGEST_TIME_LENGTH;
+//        Criteria money = Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY;
+//
+//        Order.Position market = Order.Position.MARKET;
+//        Order.Position limit = Order.Position.LIMIT;
+//        Stock stock = new Stock("4715.KL");
+//        Stock stock2 = new Stock("5302.KL");
+//        Order order = new Order(stock, buy, market, 500);
+//        Order order1 = new Order(stock2, buy, market, 100);
+//        Order order2 = new Order(stock, buy, limit, 500, 2.5);
+//        Order order3 = new Order(stock2, buy, limit, 100, 2.18);
+//        System.out.println(order);
+//        ta.placeOrder(user, order);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order1);
+//        ta.placeOrder(user, order1);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order2);
+//        ta.placeOrder(user, order2);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order3);
+//        ta.placeOrder(user, order3);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println("Current Pending Order: ");
+//        ta.updatePendingOrder(user);
+//        ta.setOrder(user);
+////        tradingEngine.CheckPendingOrder(portfolio);
+////        tradingEngine.cancelPendingOrder(money,portfolio);
+//    }
+//}
