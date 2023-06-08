@@ -1,0 +1,115 @@
+import java.util.Queue;
+
+public class User {
+
+
+    private String name;
+    private String email;
+    private String password;
+    private String status;
+    private Database database;
+    private Queue<Order> transactionHistory;
+
+
+    public User(String name, String email, String password) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        //this.portfolio = new PortFolio();
+    }
+    public User(String name, String email, String password,String status) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.status= status;
+        //this.portfolio = new PortFolio();
+    }
+
+
+
+    public String getName() {
+        return name;
+    }
+    public void setName() {
+        this.name=name;
+    }
+    public void setEmail() {
+        this.email=email;
+    }
+    public void setPassword() {
+        this.password=password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+    public Queue<Order> getTransactionHistory() {
+        return transactionHistory;
+    }
+
+
+    public void Disqualified() {
+        this.status="disqualified";
+        database.updateStatus(status,name);
+    }
+    public String getStatus(){
+        return status;
+    }
+
+    public void setName(String newName) {
+        name = newName;
+    }
+
+    public void setEmail(String newEmail) {
+        email = newEmail;
+    }
+
+    public void setPassword(String newPassword) {
+        password = newPassword;
+    }
+
+
+
+    private String id;
+    private double accountBalance;
+    private double totalPnL;
+    private int numTrades;
+    private int winningTrades;
+    private int losingTrades;
+
+    public User(String id, double accountBalance, double totalPnL, int numTrades, int winningTrades, int losingTrades) {
+        this.id = id;
+        this.accountBalance = accountBalance;
+        this.totalPnL = totalPnL;
+        this.numTrades = numTrades;
+        this.winningTrades = winningTrades;
+        this.losingTrades = losingTrades;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public double getTotalPnL() {
+        return totalPnL;
+    }
+
+    public int getNumTrades() {
+        return numTrades;
+    }
+
+    public int getWinningTrades() {
+        return winningTrades;
+    }
+
+        public int getLosingTrades() {
+            return losingTrades;
+        }
+    }
+
+
+
