@@ -3,7 +3,8 @@ public class Leaderboard {
     private List<User> users;
 
     public Leaderboard(List<User> userlist) {
-        users = userlist;
+        Database db = new Database();
+        users = db.retriveUserList();
     }
 
     public void displayLeaderboard() {

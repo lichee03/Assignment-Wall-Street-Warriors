@@ -2,15 +2,15 @@ import java.util.*;
 import java.util.Map.Entry;
 
 public class Dashboard {
-    private User user;
+    private PortFolio pf;
 
     public enum displayType {
         CHRONOLOGICAL,
         PRICE
     }
 
-    public Dashboard(User user) {
-        this.user = user;
+    public Dashboard(PortFolio pf) {
+        this.pf = pf;
     }
 
     private class PriceComparator implements Comparator<Order> {
@@ -24,11 +24,11 @@ public class Dashboard {
         System.out.println("╔══════════════════════════════════════════════════════════════════╗");
         System.out.println("║                             DASHBOARD                            ║");
         System.out.println("╠══════════════════════════════════════════════════════════════════╣");
-        System.out.printf("║ Account balance: %-47.2f ║%n", user.getPortfolio().getAccountBalance());
-        System.out.printf("║ Current points: %-48s ║%n", String.format("%-9s", user.points));
+        System.out.printf("║ Account balance: %-47.2f ║%n", pf.getAccountBalance());
+        System.out.printf("║ Current points: %-48s ║%n", String.format("%-9s", pf.getUser().points));
         System.out.println("╠══════════════════════════════════════════════════════════════════╣");
         System.out.println("║ Holdings:                                                        ║");
-        Map<String, Integer> holdings = user.getPortfolio().getStockShare();
+        Map<String, Integer> holdings = pf.getStockShare();
         System.out.println("║ Stock name                   ║ Shares                            ║");
         for (Entry<String, Integer> entry : holdings.entrySet()) {
             String stock = entry.getKey();
@@ -38,29 +38,36 @@ public class Dashboard {
         System.out.println("╠══════════════════════════════════════════════════════════════════╣");
 
         System.out.println("║ Transaction history:                                             ║");
-        if (!user.getTransactionHistory().isEmpty()) {
-            List<Order> transactionHistoryList = new ArrayList<>(user.getTransactionHistory());
-            if (type == displayType.PRICE) {
-                Collections.sort(transactionHistoryList, new PriceComparator());
-            }
-            displayTransactionHistory();
-        } else {
+        Database db = new Database();
+        List<Order> orderHistory = db.retriveOrderHistory(pf.getUser());
+        if(orderHistory.isEmpty()){
             System.out.println("║ No past transactions.                                            ║");
+        }
+        else{
+            for (Order order : orderHistory){
+                if(order.getStatus().equalsIgnoreCase("Completed")){
+                    if (type == displayType.PRICE) {
+                        Collections.sort(orderHistory, new PriceComparator());
+                        String line = "══════════════════════════════════════════════════════════════════";
+                        System.out.println(centerAlignWithBorders("Order Type: " + order.getType()));
+                        System.out.println(centerAlignWithBorders("Stock: " + order.getStock().getName()));
+                        System.out.println(centerAlignWithBorders("Price: " + order.getPrice()));
+                        System.out.println(centerAlignWithBorders("Shares: " + order.getShares()));
+                        System.out.println(centerAlignWithBorders(line));
+                    }
+                    else{
+                        String line = "══════════════════════════════════════════════════════════════════";
+                        System.out.println(centerAlignWithBorders("Order Type: " + order.getType()));
+                        System.out.println(centerAlignWithBorders("Stock: " + order.getStock().getName()));
+                        System.out.println(centerAlignWithBorders("Price: " + order.getPrice()));
+                        System.out.println(centerAlignWithBorders("Shares: " + order.getShares()));
+                        System.out.println(centerAlignWithBorders(line));
+                    }
+                }
+            }
         }
 
         System.out.println("╚══════════════════════════════════════════════════════════════════╝");
-    }
-
-
-    public void displayTransactionHistory() {
-        String line = "══════════════════════════════════════════════════════════════════";
-        for (Order order : user.getTransactionHistory()) {
-            System.out.println(centerAlignWithBorders("Order Type: " + order.getType()));
-            System.out.println(centerAlignWithBorders("Stock: " + order.getStock().getName()));
-            System.out.println(centerAlignWithBorders("Price: " + order.getPrice()));
-            System.out.println(centerAlignWithBorders("Shares: " + order.getShares()));
-            System.out.println(centerAlignWithBorders(line));
-        }
     }
 
     public static String centerAlignWithBorders(String text) {

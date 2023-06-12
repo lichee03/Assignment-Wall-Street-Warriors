@@ -1,5 +1,4 @@
 import java.util.Queue;
-
 public class User {
 
 
@@ -9,7 +8,7 @@ public class User {
     private String status;
     private Database database;
     private Queue<Order> transactionHistory;
-
+    public double points;
 
     public User(String name, String email, String password) {
         this.name = name;
@@ -30,16 +29,7 @@ public class User {
     public String getName() {
         return name;
     }
-    public void setName() {
-        this.name=name;
-    }
-    public void setEmail() {
-        this.email=email;
-    }
-    public void setPassword() {
-        this.password=password;
-    }
-
+    
     public String getEmail() {
         return email;
     }
@@ -72,7 +62,10 @@ public class User {
         password = newPassword;
     }
 
-
+    public void updatePoints() { //updates points for current user portfolio
+        PortFolio pf = new PortFolio(this);
+        points = (((pf.getValue()+pf.getAccountBalance())-50000)/50000)*100;
+    }
 
     private String id;
     private double accountBalance;

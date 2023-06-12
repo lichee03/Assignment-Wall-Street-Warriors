@@ -79,5 +79,18 @@ public class PortFolio {
     public User getUser() {
         return user;
     }
+
+    public Map<String, Integer> getStockShare() { //ignore, this is for the dashboard
+        Map<String, Integer> stockHoldings = new HashMap<>();
+        for (Map.Entry<Stock, Integer> entry : holdings.entrySet()) {
+            Stock stock = entry.getKey();
+            int shares = entry.getValue();
+            stockHoldings.put(stock.getName(), shares);
+        }
+        return stockHoldings;
+    }
+
+    
+
 }
 
