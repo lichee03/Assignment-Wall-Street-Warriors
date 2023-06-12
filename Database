@@ -265,18 +265,21 @@ public class Database {
     public Map<Stock, Integer> retriveHoldings(User user) {
         Map<Stock, Integer> holdings = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "SELECT Stocksymbol, Shares FROM holdings";
+            String sql = "SELECT UserName, Stocksymbol, Shares FROM holdings";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             ResultSet resultSet = statement.executeQuery();
 
             // Process the result set
             while (resultSet.next()) {
+                String name = resultSet.getString("UserName");
                 String symbol = resultSet.getString("Stocksymbol");
                 int shares = resultSet.getInt("Shares");
                 Stock stock = new Stock(symbol);
                 // Store the data in the map
-                holdings.put(stock, shares);
+                if (name.equals(user.getName())) {
+                    holdings.put(stock, shares);
+                }
             }
             resultSet.close();
             statement.close();
