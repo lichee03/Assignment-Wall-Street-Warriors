@@ -92,8 +92,18 @@ public class Order {
     }
 
     public String toString() {
-        return "Order submitted on " + getTime() + "\nType: " + getType() + "\nPosition: " + getPosition() + "\nPrice: " + getPrice() + "\nShare: " + getShares()+"\n";
+        String format = "%-10s %-25s %-20s %-15s %-15s %-15s %-15s %-15s";
+        String header = String.format(format,"OrderID", "Time", "Stock symbol","Type", "Position", "Price", "Shares","Total price");
+        String row = String.format(format, getID(),getTime(), getStock().getSymbol(),getType(), getPosition(), getPrice(), getShares(), getValue());
 
+        StringBuilder table = new StringBuilder();
+        table.append("Order submitted.\n");
+        table.append("------------------------------------------------------------------------------------------------------------------------------------------------------------------").append("\n");
+        table.append(header).append("\n");
+        table.append("------------------------------------------------------------------------------------------------------------------------------------------------------------------").append("\n");
+        table.append(row).append("\n");
+
+        return table.toString();
     }
 }
 
