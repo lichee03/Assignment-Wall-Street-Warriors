@@ -11,12 +11,14 @@ package dsgroup;
 import javax.mail.*;
 import javax.mail.internet.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class NotificationService {
 
     private List<Notification> notifications = new ArrayList<>();
     private List<String> enabledEmails = new ArrayList<>();
     private Map<String, Double> pAndLThresholds = new HashMap<>();
+    private Timer timer;
 
     public void configurePAndLThreshold(String userEmail, double threshold) {
         pAndLThresholds.put(userEmail, threshold);
@@ -30,28 +32,9 @@ public class NotificationService {
         enabledEmails.remove(userEmail);
     }
 
-    public void checkNotificationsAndSendEmails() {
-        boolean notificationsFound = false;
-
-        for (Map.Entry<String, Double> entry : pAndLThresholds.entrySet()) {
-            String userEmail = entry.getKey();
-            double threshold = entry.getValue();
-            double pAndL = getUserPAndL(userEmail); // get user's current P&L
-            if (pAndL >= threshold) {
-                Notification notification = new Notification(userEmail, "Your P&L has crossed the threshold of RM" + threshold);
-                sendNotification(notification);
-                notificationsFound = true;
-            }
-        }
-
-        // If no notifications were found, send a "good luck" email
-        if (!notificationsFound) {
-            if (!enabledEmails.isEmpty()) {
-                String userEmail = enabledEmails.get(0); // Assuming there is only one enabled email
-                Notification goodLuckNotification = new Notification(userEmail, "Good luck with your trading!");
-                sendNotification(goodLuckNotification);
-            }
-        }
+    public void scheduleNotificationCheck() {
+        timer = new Timer();
+        timer.schedule(new NotificationTask(), 0, TimeUnit.MINUTES.toMillis(1)); // check for notifications every 1 minute
     }
 
     public boolean sendNotification(Notification notification) {
@@ -61,15 +44,15 @@ public class NotificationService {
             try {
                 // set up email properties
                 Properties props = new Properties();
-                props.put("mail.smtp.host", "smtp.gmail.com");
-                props.put("mail.smtp.port", "587");
                 props.put("mail.smtp.auth", "true");
                 props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.smtp.host", "smtp.gmail.com");
+                props.put("mail.smtp.port", "587");
 
-                // create email session
-                Session session = Session.getInstance(props, new Authenticator() {
+                // create email session with sender's credentials
+                Session session = Session.getInstance(props, new javax.mail.Authenticator() {
                     protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication("sender@gmail.com", "<access_token>");
+                        return new PasswordAuthentication("sender@gmail.com", "password");
                     }
                 });
 
@@ -93,6 +76,31 @@ public class NotificationService {
         return false;
     }
 
+    class NotificationTask extends TimerTask {
+        public void run() {
+            boolean foundNotifications = false;
+
+            for (Map.Entry<String, Double> entry : pAndLThresholds.entrySet()) {
+                String userEmail = entry.getKey();
+                double threshold = entry.getValue();
+                double pAndL = getUserPAndL(userEmail); // get user's current P&L
+                if (pAndL >= threshold) {
+                    Notification notification = new Notification(userEmail, "Your P&L has crossed the threshold of RM" + threshold);
+                    sendNotification(notification);
+                    foundNotifications = true;
+                }
+            }
+
+            if (!foundNotifications) {
+                // No notifications found, send "Thanks and you have not crossed the threshold yet" email
+                for (String userEmail : enabledEmails) {
+                    Notification notification = new Notification(userEmail, "Thanks and you have not crossed the threshold yet");
+                    sendNotification(notification);
+                }
+            }
+        }
+    }
+
     private double getUserPAndL(String userEmail) {
         // implement logic to get the user's current P&L
         return 0.0;
@@ -102,22 +110,22 @@ public class NotificationService {
         // Create NotificationService instance
         NotificationService notificationService = new NotificationService();
 
-        // Prompt user for email account
+        // Prompt user for recipient's email address
         Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter your email account: ");
-        String userEmail = scanner.nextLine();
+        System.out.print("Enter recipient's email address: ");
+        String recipientEmail = scanner.nextLine();
 
         // Configure P&L threshold for the user
-        notificationService.configurePAndLThreshold(userEmail, 1000.0);
+        notificationService.configurePAndLThreshold(recipientEmail, 1000.0);
 
         // Enable email notification for the user
-        notificationService.enableEmailNotification(userEmail);
+        notificationService.enableEmailNotification(recipientEmail);
+
+        // Schedule notification check
+        notificationService.scheduleNotificationCheck();
 
         // Logging statement indicating program execution
         System.out.println("Notification service started. Checking for notifications...");
-
-        // Check notifications and send emails
-        notificationService.checkNotificationsAndSendEmails();
     }
 }
 
