@@ -1,3 +1,5 @@
+import ch.qos.logback.core.util.CachingDateFormatter;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -25,7 +27,8 @@ public class Order {
     private int id;
     private LocalDateTime time;
 
-    public Order(Stock stock, Type type, Position position, int shares, double price) {
+    public Order(int id,Stock stock, Type type, Position position, int shares, double price) {
+        this.id=id;
         this.stock = stock;
         this.type = type;
         this.position = position;
@@ -34,7 +37,8 @@ public class Order {
         this.time = LocalDateTime.now();
     }
 
-    public Order(Stock stock, Type type, Position position, int shares) {
+    public Order(int id,Stock stock, Type type, Position position, int shares) {
+        this.id=id;
         this.stock = stock;
         this.type = type;
         this.position = position;
@@ -92,6 +96,5 @@ public class Order {
 
     }
 }
-
 
 
