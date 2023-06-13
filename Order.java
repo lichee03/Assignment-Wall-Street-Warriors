@@ -25,6 +25,7 @@ public class Order {
     private int shares;
     private double price;
     private int id;
+    private String name;
     private LocalDateTime time;
 
     public Order(int id,Stock stock, Type type, Position position, int shares, double price) {
@@ -47,8 +48,9 @@ public class Order {
         this.time = LocalDateTime.now();
     }
 
-    public Order(int did, Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime) {
+    public Order(int did, String name,Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime) {
         this.id = did;
+        this.name=name;
         this.stock = stock;
         this.type = type;
         this.position = position;
