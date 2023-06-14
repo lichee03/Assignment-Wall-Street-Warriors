@@ -414,8 +414,12 @@ public class TradingEngine {
     }
 
     public void replenishLotPool() { //this is just the basic method, havent implemented a timer since idk how its gonna be used :p
-        for (Stock stock : stocks) {
-            lotPool.put(stock, 500); // Replenish the lot pool for each stock with 500 shares
+        Map<Stock, Integer> lotpools = new HashMap<>();
+        lotpools = database.retriveLotPool();
+        for(Map.Entry<Stock,Integer>lotpool: lotPool.entrySet()){
+            Stock stock = lotpool.getKey();
+            int share = lotpool.getValue();
+            database.UpdatelotPool(stock,share+50000);
         }
     }
 
