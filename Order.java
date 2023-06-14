@@ -25,8 +25,9 @@ public class Order {
     private int shares;
     private double price;
     private int id;
-    private String name;
     private LocalDateTime time;
+    private String name;
+    private String status;
 
     public Order(int id,Stock stock, Type type, Position position, int shares, double price) {
         this.id=id;
@@ -48,9 +49,9 @@ public class Order {
         this.time = LocalDateTime.now();
     }
 
-    public Order(int did, String name,Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime) {
+    public Order(int did,String name, Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime) {
         this.id = did;
-        this.name=name;
+        this.name= name;
         this.stock = stock;
         this.type = type;
         this.position = position;
@@ -58,7 +59,23 @@ public class Order {
         this.price = dprice;
         this.time = dateTime;
     }
-
+    public Order(int did,String name, Stock stock, Type type, Position position, int dshare, double dprice, LocalDateTime dateTime,String status) {
+        this.id = did;
+        this.name= name;
+        this.stock = stock;
+        this.type = type;
+        this.position = position;
+        this.shares = dshare;
+        this.price = dprice;
+        this.time = dateTime;
+        this.status = status;
+    }
+    public String getStatus(){
+        return status;
+    }
+    public String getName(){
+        return name;
+    }
     public Stock getStock() {
         return stock;
     }
