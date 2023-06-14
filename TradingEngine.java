@@ -1,44 +1,64 @@
-import java.time.Duration;
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
+/**
+ * @author lichee
+ */
 public class TradingEngine {
+
     private List<Stock> stocks;
-    private Map<Stock, Queue<UserOrder>> buyOrders;
-    private Map<Stock, Queue<UserOrder>> sellOrders;
-    private Map<User, Queue<UserOrder>> pendingOrders;
+    private Map<Stock, List<Order>> buyOrders;
+    private Map<Stock, List<Order>> sellOrders;
+    private TradingApp tradingApp;
     private Map<Stock, Integer> lotPool; // keep track of the 500-lot pool 
+    private List<Order> pendingOrders;
+    private List<Order> orderHistory;
+
+    private Stocklist2 stocklist;
+    private Database database;
+    private ScheduledExecutorService executorService;
+    private final int INTERVAL_HOURS = 24;
+
     public enum Criteria {
         CRITERIA_LONGEST_TIME_LENGTH,
         CRITERIA_HIGHEST_AMOUNT_OF_MONEY
     }
-    private ScheduledExecutorService executorService;
-    private final int INTERVAL_HOURS = 24;
+
     public TradingEngine(List<Stock> stocks) {
         this.stocks = stocks;
         this.buyOrders = new HashMap<>();
         this.sellOrders = new HashMap<>();
+        this.pendingOrders = new ArrayList<>();
         this.lotPool = new HashMap<>();
-        this.pendingOrders = new HashMap<>();
+        database = new Database();
         for (Stock stock : stocks) {
-            buyOrders.put(stock, new LinkedList<>());
-            sellOrders.put(stock, new LinkedList<>());
-            lotPool.put(stock, 500); // Initialize the lot pool for each stock with 500 shares
+            buyOrders.put(stock, new ArrayList<>());
+            sellOrders.put(stock, new ArrayList<>());
+//            lotPool.put(stock, 50000); //each stock have 500lots
+//        database.insertlotPool(lotPool); ald inserted
         }
         executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleAtFixedRate(this::replenishLotPool, 0, INTERVAL_HOURS, TimeUnit.HOURS);;
+        executorService.scheduleAtFixedRate(this::replenishLotPool, 0, INTERVAL_HOURS, TimeUnit.HOURS);
+        ;
     }
-    public void executeOrder(Order order, User user) { //Need to use user instead of portfolio to access user data
-        double stockPrice = order.getStock().getPrice(); //get current market stock price
-        double acceptableRange = stockPrice * 0.01; // Calculate 1% of the current price
-        double lowerBound = stockPrice - acceptableRange;
-        double upperBound = stockPrice + acceptableRange;
-        double orderPrice = order.getPrice()/order.getShares(); //Check the order price per share
-        int maxShares = isInitialTradingPeriod() ? Integer.MAX_VALUE : 500;
+
+
+    public void executeOrder(Order order, PortFolio portfolio) {
+        String symbol = order.getStock().getSymbol();
+        double price = order.getStock().getPrice(); //get current market stock price
+        double acceptableRange = price * 0.01; // Calculate 1% of the current price
+        double lowerBound = price - acceptableRange;
+        double upperBound = price + acceptableRange;
+        double orderPrice = order.getPrice();
+        Order.Position position = order.getPosition();
         // Check if the stock exists in the buyOrders map
         if (!buyOrders.containsKey(order.getStock())) {
             buyOrders.put(order.getStock(), new LinkedList<>());
@@ -48,204 +68,349 @@ public class TradingEngine {
         if (!sellOrders.containsKey(order.getStock())) {
             sellOrders.put(order.getStock(), new LinkedList<>());
         }
-        if(!pendingOrders.containsKey(user)){
-            pendingOrders.put(user, new LinkedList<>());
-        }
         if (!isTradingHours()) {
             System.out.println("Trading is currently closed. Please try again during trading hours.");
+            database.updateOrderHistory(order.getID(), "Failed");
             return;
         }
+        switch (position) {
+            case MARKET:
+                if (order.getType() == Order.Type.BUY) {
+                    buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
+                    tryExecuteBuyOrders(order.getStock(), portfolio);
 
-        if (order.getShares() > maxShares) {
-            System.out.println("Exceed order limitation");
-            return;
-        }
-        if (orderPrice >= lowerBound && orderPrice <= upperBound) {
-            UserOrder newOrder = new UserOrder(order, user);
-            switch (order.getType()) {
-                case BUY:
-                    if (user.getPortfolio().getAccountBalance() >= order.getPrice()) {
-                        buyOrders.get(order.getStock()).add(newOrder); //Adds eligible orders to buyOrders
-                        executeBuyOrder(newOrder); //Executes the buy order
-                    } else {
-                        System.out.println("Insufficient funds, order failed");
-                    }
-                    break;
-                case SELL:
-                        if(checkSellOrderEligibilty(user.getPortfolio(), order)){
-                            sellOrders.get(order.getStock()).add(newOrder); //Adds eligible orders to sellOrders
-                            executeSellOrder(newOrder);//Executes the sell order
-                        }
-                    break;
-            }  
-        } else {
-            System.out.println("Price is outside the acceptable range, order failed");
-        }
-    }
-
-    public void executeBuyOrder(UserOrder userOrder){ //Accepts a buy order, checks if there is a matching sell order, and executes the order. If none, allocate shares from market. If none, order remains in buyOrders.
-        Queue<UserOrder> orderQueue  = new LinkedList<>();
-
-        Order currentOrder = userOrder.getOrder(); //ease of access
-        Stock stock = currentOrder.getStock(); //ease of access
-        
-        boolean orderExecuted = false;
-        orderQueue = sellOrders.get(stock); //gets the sellOrders for the stock
-
-        while (!orderQueue.isEmpty()) {
-            UserOrder orderFromSellOrder = orderQueue.poll(); //gets the sellOrder from the list
-            if (orderFromSellOrder.getOrder().getPrice() == currentOrder.getPrice() && orderFromSellOrder.getOrder().getShares() == currentOrder.getShares()) { //match found
-                userOrder.getUser().getPortfolio().addStock(stock, currentOrder.getShares(), currentOrder.getPrice()); //add stock to buyer's portfolio
-                orderFromSellOrder.getUser().getPortfolio().removeStock(stock, currentOrder.getShares(), currentOrder.getPrice()); //remove stock from seller's portfolio
-                sellOrders.get(stock).remove(orderFromSellOrder); //remove the  order from sellOrders
-                buyOrders.get(stock).remove(orderFromSellOrder); //remove the  order from buyOrders
-                pendingOrders.get(orderFromSellOrder.getUser()).remove(orderFromSellOrder); //remove the pending sell order from the seller's pendingOrders
-                if(pendingOrders.get(userOrder.getUser()).contains(userOrder)){ //check if the order is in pendingOrders
-                    pendingOrders.get(userOrder.getUser()).remove(userOrder); //remove the pending buy order from the buyer's pendingOrders
+                } else {
+                    sellOrders.get(order.getStock()).add(order);
+                    tryExecuteSellOrders(order.getStock(), portfolio);
                 }
-                userOrder.getUser().getTransactionHistory().add(currentOrder); //add the order to the buyer's transaction history
-                orderFromSellOrder.getUser().getTransactionHistory().add(orderFromSellOrder.getOrder()); //add the order to the seller's transaction history
-                System.out.println("Buy Order (user) completed");
-                orderExecuted = true;
                 break;
-            } 
-            }
-        if(!orderExecuted){
-            int remainingShares = lotPool.get(stock); 
-                if (remainingShares >= currentOrder.getShares()) { // Checks for shares available in the lot-pool
-                    userOrder.getUser().getPortfolio().addStock(stock, currentOrder.getShares(), currentOrder.getPrice()); // Adds the stock to the buyer's portfolio
-                    if(isInitialTradingPeriod())
-                    lotPool.put(stock, remainingShares - currentOrder.getShares()); // Updates the lot-pool
-                    buyOrders.get(stock).remove(userOrder); //Removes the buy order from the buyOrders list
-                    if(pendingOrders.get(userOrder.getUser()).contains(userOrder)){ //check if the order is in pendingOrders
-                        pendingOrders.get(userOrder.getUser()).remove(userOrder); //remove the pending buy order from the buyer's pendingOrders
+            case LIMIT:
+                if (orderPrice >= lowerBound && orderPrice <= upperBound) {
+                    if (order.getType() == Order.Type.BUY) {
+                        buyOrders.get(order.getStock()).add(order); //find order whether its available or not , if available, add order
+                        tryExecuteBuyOrders(order.getStock(), portfolio);
+//                        CheckPendingOrder(portfolio);
+                    } else {
+                        sellOrders.get(order.getStock()).add(order);
+                        tryExecuteSellOrders(order.getStock(), portfolio);
                     }
-                    userOrder.getUser().getTransactionHistory().add(currentOrder); //add the order to the buyer's transaction history
-                    System.out.println("Buy Order (market) completed");
-
                 } else {
-                    pendingOrders.get(userOrder.getUser()).add(userOrder); //Adds the order to the pendingOrders list
-                    System.out.println("No sell orders or market share available. Order is pending.");
+                    System.out.println("Price is outside the acceptable range, order failed");
+                    database.updateOrderHistory(order.getID(), "Failed");
                 }
+                break;
         }
     }
 
-    public void executeSellOrder(UserOrder userOrder){ //Accepts a sell order, checks if there is a matching buy order, and executes the order. If none, order remains in sellOrders.
-            Queue<UserOrder> orderQueue = new LinkedList<>();
+    public void tryExecuteBuyOrders(Stock stock, PortFolio portfolio) {
+                    List<Order> orders = buyOrders.get(stock);
+                    List<Order> availableSellOrder = database.retriveSellPendingOrder(portfolio.getUser()); //If no participants are selling a particular stock, the system will automatically allocate shares from the 500-lot pool for each stock.
+                    orderHistory = database.retriveOrderHistory(portfolio.getUser());
+                    double price = stock.getPrice();
+                    boolean orderExecuted = false;
+                    for (int i = 0; i < orders.size(); i++) {
+                        Order order = orders.get(i);
+                        double totalPrice = order.getValue();
+                        if (portfolio.getAccountBalance() >= totalPrice) {
+                            for (int j = 0; j < availableSellOrder.size(); j++) {
+                                Order availablesellorder = availableSellOrder.get(j);
+                                if (order.getStock().getSymbol().equals(availablesellorder.getStock().getSymbol())
+                                        && order.getShares() == availablesellorder.getShares()
+                                        && order.getPrice() == availablesellorder.getPrice()
+                                        && !availablesellorder.getName().equals(portfolio.getUser().getName())) {  // searching whether participants are selling the particular stock
+                                    portfolio.addStock(stock, order.getShares(), order.getPrice());
+                                    this.buyOrders.get(order.getStock()).remove(order);
+                                    orderExecuted = true;
+                                    orders.remove(i);
+                                    database.updatePendingOrder(availablesellorder.getID(), "Completed");
+                                    database.updateOrderHistory(availablesellorder.getID(), "Completed");
+                                    User user1 = new User(availablesellorder.getName());//update holding on specific user
+                                    System.out.println(availablesellorder.getName());
+                                    PortFolio portfolio1 = new PortFolio(user1);
+                                    portfolio1.removeStock(availablesellorder.getStock(), availablesellorder.getShares(), availablesellorder.getPrice());
+                                    portfolio1.getHoldings();
+                                    System.out.println("Buy Order completed");
+                                    database.updateOrderHistory(order.getID(), "Completed");
+                                    System.out.println("Current Holdings");
+                                    System.out.println("-------------------------------------------");
+                                    System.out.printf("%-20s %-20s\n", "Stock symbol", "Shares");
+                                    System.out.println("-------------------------------------------");
+                                    for (Map.Entry<Stock, Integer> entry : portfolio.getHoldings().entrySet()) {
+                                        Stock stocks = entry.getKey();
+                                        int shares = entry.getValue();
+                                        System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
+                                    }
+                                    System.out.println("Account Balance: " + portfolio.getAccountBalance());
 
-            Order currentOrder = userOrder.getOrder();
-            Stock stock = currentOrder.getStock(); //ease of access
-            
-            orderQueue = buyOrders.get(stock); //gets the buyOrders for the stock of the order
-
-            while(!orderQueue.isEmpty()){
-                UserOrder orderFromBuyOrder = orderQueue.poll(); //gets the buyOrder from the list
-                if (orderFromBuyOrder.getOrder().getPrice() == currentOrder.getPrice() && orderFromBuyOrder.getOrder().getShares() == currentOrder.getShares()) { //match found
-                    userOrder.getUser().getPortfolio().removeStock(stock, currentOrder.getShares(), currentOrder.getPrice()); //remove stock from seller
-                    orderFromBuyOrder.getUser().getPortfolio().addStock(stock, currentOrder.getShares(), currentOrder.getPrice()); //add stock to buyer
-                    sellOrders.get(stock).remove(orderFromBuyOrder); //remove the pending order from sellOrders
-                    buyOrders.get(stock).remove(userOrder); //remove the pending order from buyOrders
-                    pendingOrders.get(orderFromBuyOrder.getUser()).remove(orderFromBuyOrder); //remove the pending buy order from the buyer's pendingOrders
-                    if(pendingOrders.get(userOrder.getUser()).contains(userOrder)){ //check if the order is in pendingOrders
-                        pendingOrders.get(userOrder.getUser()).remove(userOrder); //remove the pending buy order from the seller's pendingOrders
-                    }
-                    userOrder.getUser().getTransactionHistory().add(currentOrder); //add the order to the seller's transaction history
-                    break;
-                } 
-                else{
-                    pendingOrders.get(userOrder.getUser()).add(userOrder); //Adds the order to the pendingOrders list
-                    System.out.println("No buy orders available. Order is pending.");
+                                }
+                            }
+                if(orderExecuted){
+                    i--;
                 }
-            }
-        }
-    
-    public boolean checkSellOrderEligibilty(PortFolio portfolio, Order order) {
-        
-            double totalPrice = order.getStock().getPrice() * order.getShares();
-    
-            if (order.getPrice() <= totalPrice) {
-                int currentShares = portfolio.getHoldings().getOrDefault(order.getStock(), 0);
-                if (currentShares >= order.getShares()) {
-                    return true;
-                } else {
-                    System.out.println("Not enough shares to sell. Order failed.");
-                    return false;
+                //no matching, allocate from lot pool
+                if (!orderExecuted) {
+                    lotPool = database.retriveLotPool();
+                    int remainingShares = lotPool.getOrDefault(stock, 0);
+                    if (remainingShares >= order.getShares()&&order.getStock().getPrice()== order.getPrice()) {
+                        portfolio.addStock(stock, order.getShares(), order.getPrice());
+                        database.UpdatelotPool(stock, remainingShares - order.getShares());
+                        orders.remove(i);
+                        this.buyOrders.get(order.getStock()).remove(order);
+                        i--;
+                        System.out.println("Buy Order completed");
+                        database.updateOrderHistory(order.getID(), "completed");
+                        System.out.println("Current Holdings");
+                        System.out.println("-------------------------------------------");
+                        System.out.printf("%-20s %-20s\n", "Stock symbol", "Shares");
+                        System.out.println("-------------------------------------------");
+                        for (Map.Entry<Stock, Integer> entry : portfolio.getHoldings().entrySet()) {
+                            Stock stocks = entry.getKey();
+                            int shares = entry.getValue();
+                            System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
+                        }
+                        System.out.println("Acoount Balance: " + portfolio.getAccountBalance());
+                    } else {
+                        database.insertPendingOrder(order, portfolio.getUser());
+                        System.out.println("No orders available. Order is pending.");
+                        break;
+                    }
                 }
             } else {
-                System.out.println("Sell Order price must be equal to or less than the current stock price. Sell Order failed.");
-                return false;
+                System.out.println("Current Account Balance not enough.Order Failed.");
+                orders.remove(i);
+                this.buyOrders.get(order.getStock()).remove(order);
+                database.updateOrderHistory(order.getID(), "Failed");
+                i--;
             }
-        }
 
-        public void removingPendingOrder(User user, Criteria criteria){
-            if (criteria == Criteria.CRITERIA_LONGEST_TIME_LENGTH){
-                removeLongestPendingOrder(user);
-            }
-            else if (criteria == Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY){
-                removePriciestOrder(user);
-            }
-        }
 
-        public void removeLongestPendingOrder(User user) {
-            if (user!=null && pendingOrders.get(user)!=null && !pendingOrders.get(user).isEmpty()){
-                if (pendingOrders.get(user).peek().getOrder().getType() == Order.Type.BUY)
-                buyOrders.get(pendingOrders.get(user).peek().getOrder().getStock()).remove(pendingOrders.get(user).peek()); //remove the longest pending buy order
-                else
-                sellOrders.get(pendingOrders.get(user).peek().getOrder().getStock()).remove(pendingOrders.get(user).peek()); //remove the longest pending sell order
-                pendingOrders.get(user).poll(); //remove the longest pending order
-            }
         }
+    }
 
-        public void removePriciestOrder(User user){
-            double highestPrice = 0;
-            UserOrder highestOrder = null;
-            if (user!=null && pendingOrders.get(user)!=null && !pendingOrders.get(user).isEmpty()){
-                for (UserOrder order : pendingOrders.get(user)) {
-                    if (order.getOrder().getPrice() > highestPrice) {
-                        highestPrice = order.getOrder().getPrice();
-                        highestOrder = order;
+
+    public void tryExecuteSellOrders(Stock stock, PortFolio portfolio) {//if dont have user want to buy the sell order, will added to the pending list
+        List<Order> orders = sellOrders.get(stock);
+        orderHistory = database.retriveOrderHistory(portfolio.getUser());
+        List<Order> availableBuyOrder = database.retriveBuyPendingOrder(portfolio.getUser());
+        double price = stock.getPrice();
+        for (int i = 0; i < orders.size(); i++) {
+            Order order = orders.get(i);
+            boolean matchFound = false;
+            for (int j = 0; j < availableBuyOrder.size(); j++) {
+                Order availablebuyorder = availableBuyOrder.get(j);
+                if (order.getStock().getSymbol().equals(availablebuyorder.getStock().getSymbol())
+                        && order.getShares() == availablebuyorder.getShares()
+                        && order.getPrice() == availablebuyorder.getPrice()
+                        && !availablebuyorder.getName().equals(portfolio.getUser().getName())) {  // searching whether participants are buying the particular stock
+                    int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
+                    System.out.println(currentShares);
+                    if (currentShares >= order.getShares()) {
+                        portfolio.removeStock(stock, order.getShares(), order.getPrice());
+                        orders.remove(i);
+                        this.sellOrders.get(order.getStock()).remove(order);
+                        database.updatePendingOrder(availablebuyorder.getID(), "Completed");
+                        database.updateOrderHistory(availablebuyorder.getID(), "Completed");
+                        User user1 = new User(availablebuyorder.getName());//add holding on specific user
+                        PortFolio portfolio1 = new PortFolio(user1);
+                        portfolio1.addStock(availablebuyorder.getStock(), availablebuyorder.getShares(), availablebuyorder.getPrice());
+                        i--;
+                        matchFound = true;
+                        System.out.println("Sell Order Completed.");
+                        System.out.println("Current Holdings");
+                        System.out.println("-------------------------------------------");
+                        System.out.printf("%-20s %-20s\n", "Stock symbol", "Shares");
+                        System.out.println("-------------------------------------------");
+                        for (Map.Entry<Stock, Integer> entry : portfolio.getHoldings().entrySet()) {
+                            Stock stocks = entry.getKey();
+                            int shares = entry.getValue();
+                            System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
+                        }
+                        System.out.println("Acoount Balance: " + portfolio.getAccountBalance());
+                        database.updateOrderHistory(order.getID(), "Completed");
+                        Automatching(order, portfolio.getUser());
+                        break;
+                    } else {
+                        System.out.println("Not enough share to sell.Order failed");
+                        orders.remove(i);
+                        this.sellOrders.get(order.getStock()).remove(order);
+                        database.updateOrderHistory(order.getID(), "Failed");
+                        i--;
+                        break;
                     }
                 }
-                if (highestOrder.getOrder().getType() == Order.Type.BUY)
-                buyOrders.get(highestOrder.getOrder().getStock()).remove(highestOrder); //remove the highest priced buy order
-                else
-                sellOrders.get(highestOrder.getOrder().getStock()).remove(highestOrder); //remove the highest priced sell order
-                pendingOrders.get(user).remove(highestOrder); //remove the highest priced order
+            }
+            if (!matchFound) {
+                database.insertPendingOrder(order, portfolio.getUser());
+                System.out.println("No buy orders available. Order is pending.");
+
             }
         }
+
+    }
+
+
+    public void CheckPendingOrder(PortFolio portfolio) {
+        List<Order> pendingOrders = database.retrivePendingOrder(portfolio.getUser()); // Own pending orders
+        List<Order> othersBuyPendingOrders = database.retriveBuyPendingOrder(portfolio.getUser());
+        List<Order> othersSellPendingOrders = database.retriveSellPendingOrder(portfolio.getUser());
+
+        for (Order pendingOrder : pendingOrders) {
+            for (Order otherBuyOrder : othersBuyPendingOrders) {
+                if (pendingOrder.getType() != otherBuyOrder.getType()
+                        && pendingOrder.getStock().getSymbol().equals(otherBuyOrder.getStock().getSymbol())
+                        && pendingOrder.getShares() == otherBuyOrder.getShares()
+                        && pendingOrder.getPrice() == otherBuyOrder.getPrice()
+                        && !pendingOrder.getName().equals(portfolio.getUser().getName())) {
+                    buyOrders.get(pendingOrder.getStock()).add(pendingOrder);
+                    tryExecuteBuyOrders(pendingOrder.getStock(), portfolio);
+                    break;
+                }
+            }
+
+            for (Order otherSellOrder : othersSellPendingOrders) {
+                if (pendingOrder.getType() != otherSellOrder.getType()
+                        && pendingOrder.getStock().getSymbol().equals(otherSellOrder.getStock().getSymbol())
+                        && pendingOrder.getShares() == otherSellOrder.getShares()
+                        && pendingOrder.getPrice() == otherSellOrder.getPrice()
+                        && !pendingOrder.getName().equals(portfolio.getUser().getName())) {
+                    sellOrders.get(pendingOrder.getStock()).add(pendingOrder);
+                    tryExecuteSellOrders(pendingOrder.getStock(), portfolio);
+                    break;
+                }
+            }
+
+            if (pendingOrder.getStock().getPrice() == pendingOrder.getPrice()) {
+                if (pendingOrder.getType() == Order.Type.BUY) {
+                    buyOrders.get(pendingOrder.getStock()).add(pendingOrder);
+                    tryExecuteBuyOrders(pendingOrder.getStock(), portfolio);
+                } else {
+                    sellOrders.get(pendingOrder.getStock()).add(pendingOrder);
+                    tryExecuteSellOrders(pendingOrder.getStock(), portfolio);
+                }
+            }
+        }
+    }
+
+
+    public void cancelPendingOrder(Criteria criteria, PortFolio portfolio) {
+        Criteria criterias = criteria;
+        pendingOrders = database.retrivePendingOrder(portfolio.getUser());
+        if (!pendingOrders.isEmpty()) {
+            switch (criterias) {
+                case CRITERIA_LONGEST_TIME_LENGTH:
+                    // 0 is the first order whhich is the longest
+                    Order canceledOrder = pendingOrders.remove(0);
+                    database.updatePendingOrder(canceledOrder.getID(), "Canceled");
+                    System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+                    database.updateOrderHistory(canceledOrder.getID(), "Canceled");
+                    break;
+                case CRITERIA_HIGHEST_AMOUNT_OF_MONEY:
+                    pendingOrders.sort(Comparator.comparing(Order::getValue).reversed());
+                    canceledOrder = pendingOrders.remove(0);
+                    database.updatePendingOrder(canceledOrder.getID(), "Canceled");
+                    System.out.println("Canceled order: " + canceledOrder.getStock().getSymbol() + " - " + canceledOrder.getShares() + " shares at " + canceledOrder.getPrice());
+                    database.updateOrderHistory(canceledOrder.getID(), "Canceled");
+                    break;
+            }
+
+        } else {
+            System.out.println("No pending order available.");
+        }
+    }
+
+    public void Automatching(Order order, User user) {
+        tradingApp = new TradingApp(this);
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Do you want to purchase this order?");  //Automatching to others competitors sell order
+        List<Order> sellorder = database.retriveSellPendingOrder(user);
+        List<Order> matchSellOrder = new ArrayList<>();
+        double value = order.getValue();
+        System.out.println("------------------------------------------------------------------");
+        System.out.printf("%-20s %-20s %-20s %-20s\n", "Order ID", " Stock", "Shares", "Price");
+        System.out.println("------------------------------------------------------------------");
+        if (sellorder.isEmpty()) {
+            System.out.printf("%-20s %-20s %-20s\n", "null", "null", "null", "null");
+            System.out.println("No order matched");
+        }
+        for (Order orders : sellorder) {
+            double pendingOrdervalue = orders.getValue();
+            if (value == pendingOrdervalue) {
+                matchSellOrder.add(orders);
+            }
+        }
+        if (matchSellOrder.isEmpty()) {
+            System.out.printf("%-20s %-20s %-20s %-20s\n", "null", "null", "null", "null");
+            System.out.println("No order matched");
+        } else {
+            for (Order match : matchSellOrder) {
+                System.out.printf("%-20s %-20s %-20s %-20s\n", match.getID(), match.getStock().getSymbol(), match.getShares(), match.getPrice());
+            }
+            System.out.println("1: Yes \n2: No");
+            int response = sc.nextInt();
+            switch(response){
+                case 1:
+                System.out.println("Enter Order ID");
+                int id = sc.nextInt();
+                for (Order match : matchSellOrder) {
+                    if (match.getID() == id) {
+                        int orderId = GenerateId();
+                        Order order1= new Order(orderId,match.getStock(),match.getType(),match.getPosition(),match.getShares(),match.getPrice());
+                        tradingApp.placeOrder(user, order1);
+                    }
+                }
+                break;
+
+                case 2:
+                    return;
+            }
+        }
+    }
+
 
     public boolean isTradingHours() {
         // Get the current time
         LocalTime currentTime = LocalTime.now();
-        LocalTime startMorning = LocalTime.of(9, 0);
+        LocalDate currentDate = LocalDate.now();
+
+        // Get the day of the week
+        DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
+
+        // Check if the day falls within the trading week (Monday to Friday)
+        boolean isTradingDay = (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY);
+
+        LocalTime startMorning = LocalTime.of(0, 0);
         LocalTime endMorning = LocalTime.of(12, 30);
-        LocalTime startAfternoon = LocalTime.of(14, 30);
-        LocalTime endAfternoon = LocalTime.of(19, 30);
+        LocalTime startAfternoon = LocalTime.of(14, 00);
+        LocalTime endAfternoon = LocalTime.of(23, 59);
+
         // Check if the current time is within the trading hours
         boolean isMorningSession = currentTime.isAfter(startMorning) && currentTime.isBefore(endMorning);
         boolean isAfternoonSession = currentTime.isAfter(startAfternoon) && currentTime.isBefore(endAfternoon);
-        return isMorningSession || isAfternoonSession;
-    }
-    
-    public boolean isInitialTradingPeriod() {
-        LocalDateTime sessionStart = LocalDateTime.of(2023, 5, 22, 9, 00);
-        LocalDateTime now = LocalDateTime.now();
-        long noOfDays = Duration.between(sessionStart, now).toDays();
-        if (noOfDays > 3) {
-            return false;
-        } else
-            return true;
-    }
-  
-    public Map<User, Queue<UserOrder>> getPendingOrders() {
-        return pendingOrders;
-    }
-    public Map<Stock, Queue<UserOrder>> getSellOrders() {
-        return sellOrders;
+
+        return (isMorningSession || isAfternoonSession);//&& isTradingDay);
     }
 
-    public void getStocklist(){
-        System.out.println(stocks);
+    public boolean isInitialTradingPeriod() {
+        LocalDateTime sessionStart = LocalDateTime.of(2023, 6, 5, 9, 0);
+        LocalDateTime now = LocalDateTime.now();
+        long noOfDays = Duration.between(sessionStart, now).toDays();
+        return noOfDays < 3;
+    }
+
+    public boolean isClosingTime() {
+        LocalTime now = LocalTime.now();
+        LocalTime closingTime = LocalTime.of(5, 0);
+        boolean isClosingTime = now.equals(closingTime);
+
+        return isClosingTime;
+    }
+
+    public void displaySuggestedPrice(Stock stock) {
+        double stockPrice = stock.getPrice(); //get current market stock price
+        double acceptableRange = stockPrice * 0.01; // Calculate 1% of the current price
+        double lowerBound = stockPrice - acceptableRange;
+        double upperBound = stockPrice + acceptableRange;
+        System.out.println("Suggested price range for " + stock.getName() + ": " + lowerBound + " - " + upperBound);
     }
 
     public void replenishLotPool() { //this is just the basic method, havent implemented a timer since idk how its gonna be used :p
@@ -254,28 +419,149 @@ public class TradingEngine {
         }
     }
 
-    public void displaySuggestedPrice(Stock stock){
-        double stockPrice = stock.getPrice(); //get current market stock price
-        double acceptableRange = stockPrice * 0.01; // Calculate 1% of the current price
-        double lowerBound = stockPrice - acceptableRange;
-        double upperBound = stockPrice + acceptableRange;
-        System.out.println("Suggested price range for " + stock.getName() + ": " + lowerBound + " - " + upperBound);
+    public int GenerateId() {
+        Random rd = new Random();
+        int id;
+        List<Integer> orderID = database.retriveOrderID();
+        HashSet<Integer> nonduplicateID = new HashSet<>();
+        nonduplicateID.addAll(orderID);
+        do {
+            id = rd.nextInt(10000);
+        } while (nonduplicateID.contains(id));
+        return id;
     }
-}
-
-class UserOrder{
-    private Order order;
-    private User user;
 
 
-    public UserOrder(Order order, User user){
-        this.order = order;
-        this.user = user;
+    //    public void updatePrices() {
+//        for (Stock stock : stocks) {
+//            // Update the stock price based on some market data source
+//            stock.getPrice();
+//            tryExecuteBuyOrders(stock, new PortFolio()); // clear the previous user
+//            tryExecuteSellOrders(stock, new PortFolio());
+//        }
+//    }
+    public void getPendingOrders(User user) {
+        List<Order> pendingorder = database.retrivePendingOrder(user);
+        System.out.println("Pending Order:");
+        System.out.println("------------------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "Order ID", "Time", "Stock Symbol", "Type", "Position", "Price", "Shares");
+        System.out.println("------------------------------------------------------------------------------------------------------------------");
+        if (pendingorder.isEmpty()) {
+            System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "null", "null", "null", "null", "null", "null", "null");
+        }
+        for (Order order : pendingorder) {
+            System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", order.getID(), order.getTime(), order.getStock().getSymbol(), order.getType(), order.getPosition(), order.getPrice(), order.getShares());
+        }
     }
-    public Order getOrder() {
-        return order;
+
+    public void getStocklist() {
+        System.out.println(stocks);
     }
-    public User getUser() {
-        return user;
+
+    //public void replemnishLot() {
+
+    //}
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Stocklist2 stocklist = new Stocklist2();
+        Price2 price2 = new Price2();
+        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
+        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
+        //tradingEngine.getStocklist();
+        User user = new User("Pang", "pang_03@gmail.com", "123456q/");
+        User user1 = new User("Chai", "lichee03@gmail.com", "B123456!");
+        PortFolio portfolio = new PortFolio(user1);
+        Database database = new Database();
+        TradingApp ta = new TradingApp(tradingEngine);
+        Order.Type buy = Order.Type.BUY;
+        Order.Type sell = Order.Type.SELL;
+        Criteria time = Criteria.CRITERIA_LONGEST_TIME_LENGTH;
+        Criteria money = Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY;
+////
+        Order.Position market = Order.Position.MARKET;
+        Order.Position limit = Order.Position.LIMIT;
+        Stock stock = new Stock("4715.KL");
+//        Stock stock2 = new Stock("5302.KL");
+//        Order order1 = new Order(1011,stock, sell, limit, 500,2.51);
+//        tradingEngine.Automatching(order1,user);
+//        Order order2 = new Order(1022,stock, buy, limit, 500, 2.5);
+//        Order order3 = new Order(1023,stock2, buy, limit, 100, 2.18);
+        // System.out.println(order.getID());
+//        System.out.println(order);
+//        ta.placeOrder(user, order);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Account Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order1);
+//        ta.placeOrder(user, order1);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + "  Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order2);
+//        ta.placeOrder(user, order2);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println(order3);
+//        ta.placeOrder(user, order3);
+//        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+//        System.out.println("Current Pending Order: ");
+//        ta.updatePendingOrder(user);
+
+     //       ta.setOrder(user1);
+
+//        tradingEngine.CheckPendingOrder(portfolio);
+//        database.delete();
+////        tradingEngine.cancelPendingOrder(money,portfolio);
+//            System.out.println("--------------------------------------");
+//            System.out.printf("%-20s %-20s\n", " Stock", "Shares");
+//            System.out.println("--------------------------------------");
+//        for (Map.Entry<Stock, Integer> entry : database.retriveHoldings().entrySet()) {
+//            Stock stock = entry.getKey();
+//            int shares = entry.getValue();
+//            System.out.printf("%-20s %-20s", stock.getSymbol(), shares);
+//            System.out.println();
+//        Stock stock = new Stock("4714.kl");
+//        System.out.println(portfolio.getHoldings());
+//        int currentShares = portfolio.getHoldings().getOrDefault(stock, 0);
+//        System.out.println(currentShares);
+//        Order order = new Order(1010,stock, sell, market, 500);
+//        tradingEngine.executeOrder(order,portfolio);
+        //   portfolio.getHoldings();
+//        List<Order> buyorder = database.retriveSellPendingOrder(user);
+//        System.out.println(buyorder);
+
+//        System.out.println("Others competitors buy order list");
+//        System.out.println("--------------------------------------");
+//        System.out.printf("%-20s %-20s %-20s\n", " Stock", "Shares", "Price");
+//        if (buyorder.isEmpty()) {
+//            System.out.printf("%-20s %-20s %-20s\n", "null", "null", "null");
+//        }
+//        for (int i = 0; i < buyorder.size(); i++) {
+//            Order order = buyorder.get(i);
+//            Stock stock = order.getStock();
+//            int share = order.getShares();
+//            double price = order.getPrice();
+//            System.out.printf("%-20s %-20s %-20s\n", stock.getSymbol(), share, price);
+//        }
+//        }
+//    }
+//        System.out.println("Stock available");
+//        System.out.println("-----------------------------------------------------");
+//        System.out.printf("%-20s %-20s \n", "Stock", "Shares");
+//        System.out.println("-----------------------------------------------------");
+//        Map<Stock, Integer> lotpool = database.retriveLotPool();
+//        for (Map.Entry<Stock, Integer> entry : lotpool.entrySet()) {
+//            Stock stock = entry.getKey();
+//            int shares = entry.getValue();
+//            System.out.printf("%-20s %-20s\n", stock.getSymbol(), shares);
+//        }
+        //      database.delete();
+//        System.out.println("Stock available");
+//        System.out.println("-----------------------------------------------------");
+//        System.out.printf("%-20s %-20s \n", "Stock", "Shares");
+//        System.out.println("-----------------------------------------------------");
+//        Map<Stock, Integer> lotpool = database.retriveLotPool();
+//        for (Map.Entry<Stock, Integer> entry : lotpool.entrySet()) {
+//            Stock stock = entry.getKey();
+//            int shares = entry.getValue();
+//            System.out.printf("%-20s %-20s\n", stock.getSymbol(), shares);
+//        }
+
     }
 }
