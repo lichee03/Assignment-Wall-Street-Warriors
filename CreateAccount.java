@@ -1,34 +1,55 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
- */
-package wallstreetwarriors;
-
-import java.util.Scanner;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
-/**
- *
- * @author Joanne Lim Zi Xuan 22004882/1
- */
 public class CreateAccount {
-    
+    private static TradingApp tradingApp;
+    private static TradingEngine tradingEngine;
+    private static User user;
+    private static PortFolio portfolio;
+    private static Database database;
+    private static StockSearch stockSearch;
+
+
     public static void main(String[] args) {
+        database = new Database();
         Scanner scanner = new Scanner(System.in);
-        
+        System.out.println("Welcome to the trading competition!");
+        System.out.println("Press 1 to create account, 2 to login");
+        int num = scanner.nextInt();
+        switch (num) {
+            case 1:
+                Register();
+                Login();
+                break;
+            case 2:
+                Login();
+                break;
+
+        }
+    }
+
+    public static void Register() {
+        Scanner scanner = new Scanner(System.in);
         // 1. Create a trading account
         System.out.println("Welcome to the trading competition!");
         System.out.println("Please enter your details to create a trading account.");
-        
+
         System.out.print("Enter your full name: ");
         String name = scanner.nextLine();
-        
+
         System.out.print("Enter your email address: ");
         String email = scanner.nextLine();
-        
+
         System.out.print("Enter a password(Must be 8 characters including alphabets, numbers and special characters: ");
         String password = scanner.nextLine();
-        
+
         // Validate the password
         while (!isValidPassword(password)) {
             System.out.println("Password is invalid!");
@@ -36,58 +57,127 @@ public class CreateAccount {
             password = scanner.nextLine();
         }
         System.out.println("Password is valid!");
-        // Assuming the brokerage firm has a method called "createAccount" to create a trading account
-        TradingAccount account = createAccount(name, email, password);
-        String fileName = "list of accounts.txt";
-        String[] lines = {name, email, password};
+        System.out.println("Congratulations! Your trading account has been created successfully.");
+        database.insertUser(name, email, password);
+    }
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
-            for (String line : lines) {
-                writer.write(line + " ");
+    public static void Login() {
+        Scanner scanner = new Scanner(System.in);
+        Stocklist2 stocklist = new Stocklist2();
+        Price2 price2 = new Price2();
+        PriorityQueue<Stock> retrievedStockList = stocklist.fetchStockList();
+        TradingEngine tradingEngine = new TradingEngine(new ArrayList<>(retrievedStockList));
+        TradingApp tradingapp = new TradingApp(tradingEngine);
+        PortFolio portfolio = new PortFolio(user);
+        Database database = new Database();
+        // 2. Log in to the app
+        System.out.println("Please enter your account credentials to log in to the trading competition app.");
+//
+        System.out.print("Enter your email address: ");
+        String loginEmail = scanner.nextLine();
+
+        System.out.print("Enter your password: ");
+        String loginPassword = scanner.nextLine();
+
+        String filePath = "/Users/lichee/IdeaProjects/WallStreetWarriors/list of accounts.txt";
+        boolean isMatchFound = database.readUser(loginEmail,loginPassword);
+
+
+        if (isMatchFound) {
+            System.out.println("\n***********Logged in successfully!***********\n");
+            user=database.retriveUser(loginEmail);
+            portfolio= new PortFolio(user);
+            System.out.println();
+            System.out.println("********************************");
+            System.out.println("Enter your option");
+            System.out.println("-------------------------------");
+            System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Leaderboard \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
+            int num = scanner.nextInt();
+
+            while (true) {
+                switch (num) {
+                    case 1:
+//                        tradingEngine.CheckPendingOrder(portfolio);//keep checking
+                        tradingapp.setOrder(portfolio.getUser());
+                        break;
+                    case 2:
+//                        tradingEngine.CheckPendingOrder(portfolio);
+                        tradingEngine.getPendingOrders(user);
+                        break;
+                    case 3:
+                        System.out.println("1. Cancel order base on longest time \n2. Cancel order base on highest amount of money");
+                        int criteria = scanner.nextInt();
+                        TradingEngine.Criteria criterias = null;
+                        switch (criteria) {
+                            case 1:
+                                criterias = TradingEngine.Criteria.CRITERIA_LONGEST_TIME_LENGTH;
+                                break;
+                            case 2:
+                                criterias = TradingEngine.Criteria.CRITERIA_HIGHEST_AMOUNT_OF_MONEY;
+                                break;
+                        }
+                        tradingEngine.cancelPendingOrder(criterias,portfolio);
+                        tradingEngine.CheckPendingOrder(portfolio); //keep checking the condition
+                        break;
+                    case 4:
+                        System.out.println("Current Holdings");
+                        System.out.println("-------------------------------------------");
+                        System.out.printf("%-20s %-20s\n", "Stock symbol", "Shares");
+                        System.out.println("-------------------------------------------");
+                        for (Map.Entry<Stock, Integer> entry : portfolio.getHoldings().entrySet()) {
+                            Stock stocks = entry.getKey();
+                            int shares = entry.getValue();
+                            System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
+                        }
+                        System.out.println("Account Balance: " + portfolio.getAccountBalance());
+                        break;
+                    case 6:
+                        stockSearch = new StockSearch();
+                        stockSearch.searchStocks();
+                        break;
+                    case 7:
+                        break;
+                    case 8:
+                        List<Order> orderHistory= database.retriveOrderHistory(user);
+                        System.out.println("Order History: ");
+                        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
+                        System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s\n", "Order ID","Time", "Type", "Position","Price","Share","Total Price");
+                        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
+                        for(Order OrderHistory:orderHistory){
+                            int ID = OrderHistory.getID();
+                            String time = OrderHistory.getTime();
+                            Order.Type type= OrderHistory.getType();
+                            Order.Position position = OrderHistory.getPosition();
+                            double price = OrderHistory.getPrice();
+                            int share= OrderHistory.getShares();
+                            double total= OrderHistory.getValue();
+                            System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", ID,time,type,position,price,share,total);
+                        }
+                        break;
+                    case 9:
+                        return;
+                }
+                System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
+                num = scanner.nextInt();
             }
-            System.out.println("Data written to " + fileName);
-        } catch (IOException e) {
-            System.err.println("Error writing to " + fileName + ": " + e.getMessage());
+        } else {
+            System.out.println("Incorrect email address or password. Please try again.");
+            Login();
         }
-        
-            System.out.println("Congratulations! Your trading account has been created successfully.");
-            // 2. Log in to the app
-            System.out.println("Please enter your account credentials to log in to the trading competition app.");
-        
-            System.out.print("Enter your email address: ");
-            String loginEmail = scanner.nextLine();
-        
-            System.out.print("Enter your password: ");
-            String loginPassword = scanner.nextLine();
-        
-            if (account.getEmail().equals(loginEmail) && account.getPassword().equals(loginPassword)) {
-                System.out.println("Logged in successfully!");
-                // Code for the trading competition app can be added here
-            } else {
-                System.out.println("Incorrect email address or password. Please try again.");
-            }
-        
-        scanner.close();
-    
     }
-    
-    public static TradingAccount createAccount(String name, String email, String password) {
-        TradingAccount account = new TradingAccount(name, email, password);
-        // Code to create the account with the brokerage firm can be added here
-        return account;
-    }
-    
+
+
     public static boolean isValidPassword(String password) {
         // Check if the password is exactly 8 characters long
         if (password.length() != 8) {
             return false;
         }
-        
+
         // Check if the password contains at least one alphabet, one number, and one special character
         boolean hasAlphabet = false;
         boolean hasNumber = false;
         boolean hasSpecialChar = false;
-        
+
         for (char c : password.toCharArray()) {
             if (Character.isLetter(c)) {
                 hasAlphabet = true;
@@ -97,50 +187,15 @@ public class CreateAccount {
                 hasSpecialChar = true;
             }
         }
-        
+
+
         if (!hasAlphabet || !hasNumber || !hasSpecialChar) {
             return false;
         }
-        
+
         return true;
     }
-    
 }
 
-class TradingAccount {
-    
-    private String name;
-    private String email;
-    private String password;
-    
-    public TradingAccount(String name, String email, String password) {
-        this.name = name;
-        this.email = email;
-        this.password = password;
-    }
-    
-    public String getName() {
-        return name;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-    
-    public String getPassword() {
-        return password;
-    }
-    
-    public void setName(String newName) {
-        name = newName;
-    }
-    
-    public void setEmail(String newEmail) {
-        email = newEmail;
-    }
-    
-    public void setPassword(String newPassword) {
-        password = newPassword;
-    }
-    
-}
+
+
