@@ -121,7 +121,6 @@ public class TradingEngine {
                                     portfolio.addStock(stock, order.getShares(), order.getPrice());
                                     this.buyOrders.get(order.getStock()).remove(order);
                                     orderExecuted = true;
-                                    orders.remove(i);
                                     database.updatePendingOrder(availablesellorder.getID(), "Completed");
                                     database.updateOrderHistory(availablesellorder.getID(), "Completed");
                                     User user1 = new User(availablesellorder.getName());//update holding on specific user
@@ -141,12 +140,13 @@ public class TradingEngine {
                                         System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
                                     }
                                     System.out.println("Account Balance: " + portfolio.getAccountBalance());
-
+                                    break;
                                 }
                             }
-                if(orderExecuted){
-                    i--;
-                }
+                if (orderExecuted && !orders.isEmpty()) {
+                                orders.remove(i);
+                                i--;
+                            }
                 //no matching, allocate from lot pool
                 if (!orderExecuted) {
                     lotPool = database.retriveLotPool();
