@@ -135,14 +135,14 @@ public class Database {
     public double retriveProfitLoss(String name) {
         double profits = 0.0;
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "SELECT Name, TotalProfit&Loss FROM user";
+            String sql = "SELECT Name, TotalProfitLoss FROM user";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             ResultSet resultSet = statement.executeQuery();
             // Process the result set
             while (resultSet.next()) {
                 String Dname = resultSet.getString("Name");
-                double Dprofit = resultSet.getDouble("TotalProfit&Loss");
+                double Dprofit = resultSet.getDouble("TotalProfitLoss");
                 if (Dname.equals(name)) {
                     return Dprofit;
                 }
@@ -157,12 +157,12 @@ public class Database {
     }
     public void updateProfitLoss(String name,double profit) {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "UPDATE user SET TotalProfit&Loss = ? WHERE Name = ? ";
+            String sql = "UPDATE user SET TotalProfitLoss = ? WHERE Name = ? ";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             // Set the new values for the columns
             statement.setDouble(1, profit);
-            statement.setString(3, name);
+            statement.setString(2, name);
             // Execute the update statement
             int rowsAffected = statement.executeUpdate();
 
