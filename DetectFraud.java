@@ -17,8 +17,11 @@ public class DetectFraud {
     private static final double MAX_VOLUME_CHANGE_PERCENT = 10.0;
     public static final double SUSPICIOUS_PERCENTAGE_CHANGE = 0.5;
     public static final int SUSPICIOUS_VOLUME_MULTIPLIER = 10;
+    public Database database;
 
     public void detectFraud(List<User> users) {
+        database= new Database();
+            users =database.retriveUserList();
         for (User user : users) {
             List<Order> orders = user.getTransactionHistory();
             List<Transaction> transactions = createTransactions(orders, user);
