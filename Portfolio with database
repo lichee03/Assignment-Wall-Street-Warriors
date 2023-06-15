@@ -1,3 +1,8 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -33,8 +38,8 @@ public class PortFolio {
     }
 
     public void addStock(Stock stock, int shares, double price) {
-        if (database.readHoldings(stock.getSymbol())) {
-            holdings = database.retriveHoldings();
+        if (database.readHoldings(user.getName(),stock.getSymbol())) {
+            holdings = database.retriveHoldings(user);
             int currentShares = holdings.getOrDefault(stock, 0);
             int newShares = currentShares + shares;
             database.updateHoldings(user.getName(), stock.getSymbol(), newShares);
@@ -47,7 +52,7 @@ public class PortFolio {
     }
 
     public void removeStock(Stock stock, int shares, double price) {
-        holdings = database.retriveHoldings();
+        holdings = database.retriveHoldings(user);
         int currentShares = holdings.getOrDefault(stock, 0);
         int newShares = currentShares - shares;
         database.updateHoldings(user.getName(), stock.getSymbol(), newShares);
@@ -59,17 +64,32 @@ public class PortFolio {
 
 
     public Map<Stock, Integer> getHoldings() {
-        return database.retriveHoldings();
+
+        return database.retriveHoldings(user);
+    }
+
+    public Map<String, Integer> getStockShare() { //ignore, this is for the dashboard
+        Map<String, Integer> stockHoldings = new HashMap<>();
+        for (Map.Entry<Stock, Integer> entry : database.retriveHoldings(user).entrySet()) {
+            Stock stock = entry.getKey();
+            int shares = entry.getValue();
+            stockHoldings.put(stock.getName(), shares);
+        }
+        return stockHoldings;
     }
 
     public double getValue() {
         double value = 0.0;
-        for (Map.Entry<Stock, Integer> entry : holdings.entrySet()) {
+        for (Map.Entry<Stock, Integer> entry : database.retriveHoldings(user).entrySet()) {
             Stock stock = entry.getKey();
             int shares = entry.getValue();
             value += stock.getPrice() * shares;
         }
         return value;
+    }
+    public boolean hasStock(Stock stock, int quantity) {
+        Integer currentQuantity = database.retriveHoldings(user).getOrDefault(stock, 0);
+        return currentQuantity >= quantity;
     }
 
     public double getAccountBalance() {
@@ -79,18 +99,5 @@ public class PortFolio {
     public User getUser() {
         return user;
     }
-
-    public Map<String, Integer> getStockShare() { //ignore, this is for the dashboard
-        Map<String, Integer> stockHoldings = new HashMap<>();
-        for (Map.Entry<Stock, Integer> entry : holdings.entrySet()) {
-            Stock stock = entry.getKey();
-            int shares = entry.getValue();
-            stockHoldings.put(stock.getName(), shares);
-        }
-        return stockHoldings;
-    }
-
-    
-
 }
 
