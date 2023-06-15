@@ -108,17 +108,42 @@ public class Database {
         }
         return accountBalance;
     }
-
-
-    public void updateHoldings(String name, String symbol, int shares) {
+    public double retriveLatestBuyPrice(User user,Stock stock) {
+        double Dprice=0.0;
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "UPDATE holdings SET Shares = ? WHERE UserName = ? AND Stocksymbol = ?";
+            String sql = "SELECT UserName, StockSymbol, LatestBuyingPrice FROM holdings";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            ResultSet resultSet = statement.executeQuery();
+            // Process the result set
+            while (resultSet.next()) {
+                String Dname = resultSet.getString("UserName");
+                String Dsymbol = resultSet.getString("StockSymbol");
+                Dprice = resultSet.getDouble("LatestBuyingPrice");
+                if (Dsymbol.equals(stock.getSymbol())&& Dname.equals(user.getName())) {
+                    return Dprice;
+                }
+            }
+            resultSet.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error retrieving data: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return Dprice;
+    }
+
+
+    public void updateHoldings(String name, String symbol, int shares,double price) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "UPDATE holdings SET Shares = ?, LatestBuyingPrice= ? WHERE UserName = ? AND Stocksymbol = ?";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             // Set the new values for the columns
             statement.setInt(1, shares);
-            statement.setString(2, name);
-            statement.setString(3, symbol);
+            statement.setDouble(2,price);
+            statement.setString(3, name);
+            statement.setString(4, symbol);
             // Execute the update statement
             int rowsAffected = statement.executeUpdate();
 
@@ -131,15 +156,16 @@ public class Database {
         }
     }
 
-    public void insertHoldings(String name, String symbol, int shares) {
+    public void insertHoldings(String name, String symbol, int shares,double price) {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "INSERT INTO holdings (UserName, Stocksymbol, Shares) VALUES (?, ?, ?)";
+            String sql = "INSERT INTO holdings (UserName, Stocksymbol, Shares, LatestBuyingPrice) VALUES (?, ?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             // Set the values for the parameters in the prepared statement
             statement.setString(1, name);
             statement.setString(2, symbol);
             statement.setInt(3, shares);
+            statement.setDouble(4,price);
 
 
             // Execute the query
@@ -554,7 +580,7 @@ public class Database {
                     Order.Type type = getTypeFromString(Dtype);
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
                     LocalDateTime dateTime = LocalDateTime.parse(Dtime, formatter);
-                    order = new Order(Did, Dname,stock, type, position, Dshare, Dprice, dateTime);
+                    order = new Order(Did, Dname,stock, type, position, Dshare, Dprice, dateTime,Dstatus);
                     orderHistory.add(order);
 
                 }
@@ -594,11 +620,13 @@ public class Database {
 
     public void delete() {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
-            String sql = "DELETE FROM LotPool  ";
+            String sql = "DELETE FROM PendingOrder WHERE orderID = ? ";
             PreparedStatement statement = connection.prepareStatement(sql);
 
             // Set the new values for the columns
+            statement.setInt(1, 4856);
             // Execute the update statement
+
             int rowsAffected = statement.executeUpdate();//can be deleted after debugging
             System.out.println("update order history Rows affected: " + rowsAffected);
 
