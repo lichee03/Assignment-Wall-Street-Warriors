@@ -77,6 +77,11 @@ public class PortFolio {
         }
         return stockHoldings;
     }
+    public void countProfitLoss(Order order){
+        double profitLoss = order.getValue()-(database.retriveLatestBuyPrice(user,order.getStock())*order.getShares());
+        double newProfitLoss =user.getTotalPnL()+profitLoss;
+        database.updateProfitLoss(user.getName(),newProfitLoss);
+    }
 
     public double getValue() {
         double value = 0.0;
