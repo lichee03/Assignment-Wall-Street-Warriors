@@ -109,7 +109,7 @@ public class Database {
         return accountBalance;
     }
     public double retriveLatestBuyPrice(User user,Stock stock) {
-        double Dprice=0.0;
+        double price=0.0;
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
             String sql = "SELECT UserName, StockSymbol, LatestBuyingPrice FROM holdings";
             PreparedStatement statement = connection.prepareStatement(sql);
@@ -119,7 +119,7 @@ public class Database {
             while (resultSet.next()) {
                 String Dname = resultSet.getString("UserName");
                 String Dsymbol = resultSet.getString("StockSymbol");
-                Dprice = resultSet.getDouble("LatestBuyingPrice");
+                double Dprice = resultSet.getDouble("LatestBuyingPrice");
                 if (Dsymbol.equals(stock.getSymbol())&& Dname.equals(user.getName())) {
                     return Dprice;
                 }
@@ -130,9 +130,50 @@ public class Database {
             System.err.println("Error retrieving data: " + e.getMessage());
             e.printStackTrace();
         }
-        return Dprice;
+        return price;
     }
+    public double retriveProfitLoss(String name) {
+        double profits = 0.0;
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "SELECT Name, TotalProfit&Loss FROM user";
+            PreparedStatement statement = connection.prepareStatement(sql);
 
+            ResultSet resultSet = statement.executeQuery();
+            // Process the result set
+            while (resultSet.next()) {
+                String Dname = resultSet.getString("Name");
+                double Dprofit = resultSet.getDouble("TotalProfit&Loss");
+                if (Dname.equals(name)) {
+                    return Dprofit;
+                }
+            }
+            resultSet.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error retrieving data: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return profits;
+    }
+    public void updateProfitLoss(String name,double profit) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "UPDATE user SET TotalProfit&Loss = ? WHERE Name = ? ";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            // Set the new values for the columns
+            statement.setDouble(1, profit);
+            statement.setString(3, name);
+            // Execute the update statement
+            int rowsAffected = statement.executeUpdate();
+
+            System.out.println("update profit Rows affected: " + rowsAffected);
+
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error updating data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public void updateHoldings(String name, String symbol, int shares,double price) {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
