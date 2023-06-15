@@ -1,6 +1,8 @@
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
-public class User {
 
+public class User {
 
     private String name;
     private String email;
@@ -9,27 +11,57 @@ public class User {
     private Database database;
     private Queue<Order> transactionHistory;
     public double points;
+    private String id;
+    private double accountBalance;
+    private double totalPnL;
+    private int numTrades;
+    private int winningTrades;
+    private int losingTrades;
+
+    public User(String name) {
+        this.name = name;
+    }
 
     public User(String name, String email, String password) {
         this.name = name;
         this.email = email;
         this.password = password;
-        //this.portfolio = new PortFolio();
+        points = 0;
     }
-    public User(String name, String email, String password,String status) {
+
+    public User(String id, double accountBalance, double totalPnL, int numTrades, int winningTrades, int losingTrades) {
+        this.id = id;
+        this.accountBalance = accountBalance;
+        this.totalPnL = totalPnL;
+        this.numTrades = numTrades;
+        this.winningTrades = winningTrades;
+        this.losingTrades = losingTrades;
+    }
+
+    public User(String name, String email, String password, String status) {
         this.name = name;
         this.email = email;
         this.password = password;
-        this.status= status;
-        //this.portfolio = new PortFolio();
+        this.status = status;
     }
-
 
 
     public String getName() {
         return name;
     }
-    
+
+    public void setName() {
+        this.name = name;
+    }
+
+    public void setEmail() {
+        this.email = email;
+    }
+
+    public void setPassword() {
+        this.password = password;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -37,16 +69,8 @@ public class User {
     public String getPassword() {
         return password;
     }
-    public Queue<Order> getTransactionHistory() {
-        return transactionHistory;
-    }
 
-
-    public void Disqualified() {
-        this.status="disqualified";
-        database.updateStatus(status,name);
-    }
-    public String getStatus(){
+    public String getStatus() {
         return status;
     }
 
@@ -62,34 +86,9 @@ public class User {
         password = newPassword;
     }
 
-    public void updatePoints() { //updates points for current user portfolio
-        PortFolio pf = new PortFolio(this);
-        points = (((pf.getValue()+pf.getAccountBalance())-50000)/50000)*100;
-    }
-
-    private String id;
-    private double accountBalance;
-    private double totalPnL;
-    private int numTrades;
-    private int winningTrades;
-    private int losingTrades;
-
-    public User(String id, double accountBalance, double totalPnL, int numTrades, int winningTrades, int losingTrades) {
-        this.id = id;
-        this.accountBalance = accountBalance;
-        this.totalPnL = totalPnL;
-        this.numTrades = numTrades;
-        this.winningTrades = winningTrades;
-        this.losingTrades = losingTrades;
-    }
 
     public String getId() {
         return id;
-    }
-
-   public double getTotalPnL() {
-        database= new Database();
-        return database.retriveProfitLoss(name);
     }
 
     public int getNumTrades() {
@@ -100,10 +99,29 @@ public class User {
         return winningTrades;
     }
 
-        public int getLosingTrades() {
-            return losingTrades;
-        }
+    public int getLosingTrades() {
+        return losingTrades;
     }
+
+    public Queue<Order> getTransactionHistory() {
+        database = new Database();
+        transactionHistory = new LinkedList<>(database.retriveOrderHistory(this));
+        return transactionHistory;
+    }
+
+
+    public void Disqualified() {
+        this.status = "disqualified";
+        database.updateStatus(status, name);
+    }
+
+
+    public double getTotalPnL() {
+        database = new Database();
+        return database.retriveProfitLoss(name);
+    }
+}
+
 
 
 
