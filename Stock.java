@@ -95,18 +95,11 @@ public class Stock implements Comparable<Stock> {
 
 
     public double getPrice() {
-        if(!priceUpdated){
-            updatePrice();
-            return price;
-        }
-        return price;
-    }
-
-    public boolean updatePrice() {
-        this.price2= new Price2();
+//  updated     
+        this.price2 = new Price2();
         price2.fetchData(getSymbol());
-        this.price=price2.getPrices();
-        return priceUpdated=true;
+        this.price=price2.getCloseDate().peek().getData();
+        return price;
     }
     
     public double getCurrentPrice() {
