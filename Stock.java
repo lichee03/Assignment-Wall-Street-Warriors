@@ -1,12 +1,6 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+import java.util.Objects;
+import java.util.PriorityQueue;
 
-/**
- *
- * @author lichee
- */
 public class Stock implements Comparable<Stock> {
     private String symbol;
     private String name;
@@ -19,20 +13,10 @@ public class Stock implements Comparable<Stock> {
     private double price;
     private Price2 price2 ;
     private Stocklist2 stocklist;
-    private boolean priceUpdated=false;
-<<<<<<< HEAD
-=======
-    
->>>>>>> 5e0921c997372f38e559de2d9e0cd6a617bde6a2
-    private double currentPrice;
     private int averageVolume;
     private double previousDayClosePrice;
     private int dailyVolume;
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> 5e0921c997372f38e559de2d9e0cd6a617bde6a2
+    private boolean priceUpdated=false;
     public Stock(String symbol) {
         this.symbol = symbol;
     }
@@ -76,15 +60,36 @@ public class Stock implements Comparable<Stock> {
 
 
 
+//    public String toString() {
+//        return "Symbol: " + this.symbol +
+//                "  Name: " + this.name +
+//                "  Currency: " + this.currency +
+//                "  Exchange: " + this.exchange +
+//                "  Mic: " + this.mic +
+//                "  Country: " + this.country +
+//                "  Type: " + this.type+ " ";
+//    }
     public String toString() {
-        return "Symbol: " + this.symbol +
-                "  Name: " + this.name +
-                "  Currency: " + this.currency +
-                "  Exchange: " + this.exchange +
-                "  Mic: " + this.mic +
-                "  Country: " + this.country +
-                "  Type: " + this.type+ "\n";
+        return "Symbol: " + this.symbol;
     }
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Stock other = (Stock) obj;
+        return symbol.equals(other.symbol);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(symbol);
+    }
+
+
 
 
     @Override
@@ -94,17 +99,18 @@ public class Stock implements Comparable<Stock> {
     }
 
 
+
     public double getPrice() {
-//  updated     
+//        if(!priceUpdated){
+//            updatePrice();
+//            return price;
+//        }
         this.price2 = new Price2();
         price2.fetchData(getSymbol());
         this.price=price2.getCloseDate().peek().getData();
         return price;
     }
-    
-    public double getCurrentPrice() {
-        return currentPrice;
-    }
+
 
     public int getAverageVolume() {
         return averageVolume;
@@ -118,3 +124,7 @@ public class Stock implements Comparable<Stock> {
         return dailyVolume;
     }
 }
+
+
+
+
