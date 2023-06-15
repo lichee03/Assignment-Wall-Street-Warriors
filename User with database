@@ -87,8 +87,9 @@ public class User {
         return id;
     }
 
-    public double getTotalPnL() {
-        return totalPnL;
+   public double getTotalPnL() {
+        database= new Database();
+        return database.retriveProfitLoss(name);
     }
 
     public int getNumTrades() {
