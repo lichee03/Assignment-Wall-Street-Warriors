@@ -42,9 +42,9 @@ public class PortFolio {
             holdings = database.retriveHoldings(user);
             int currentShares = holdings.getOrDefault(stock, 0);
             int newShares = currentShares + shares;
-            database.updateHoldings(user.getName(), stock.getSymbol(), newShares);
+            database.updateHoldings(user.getName(), stock.getSymbol(), newShares,price);
         } else {
-            database.insertHoldings(user.getName(), stock.getSymbol(), shares);
+            database.insertHoldings(user.getName(), stock.getSymbol(), shares,price);
         }
         accountBalance = database.retriveAccbalance(user.getName());
         this.accountBalance -= price * shares;
@@ -67,6 +67,11 @@ public class PortFolio {
 
         return database.retriveHoldings(user);
     }
+    public void countProfitLoss(Order order){
+        double profitLoss = order.getValue()-(database.retriveLatestBuyPrice(user,order.getStock())*order.getShares());
+        double newProfitLoss =user.getTotalPnL()+profitLoss;
+        database.updateProfitLoss(user.getName(),newProfitLoss);
+    }
 
     public Map<String, Integer> getStockShare() { //ignore, this is for the dashboard
         Map<String, Integer> stockHoldings = new HashMap<>();
@@ -76,11 +81,6 @@ public class PortFolio {
             stockHoldings.put(stock.getName(), shares);
         }
         return stockHoldings;
-    }
-    public void countProfitLoss(Order order){
-        double profitLoss = order.getValue()-(database.retriveLatestBuyPrice(user,order.getStock())*order.getShares());
-        double newProfitLoss =user.getTotalPnL()+profitLoss;
-        database.updateProfitLoss(user.getName(),newProfitLoss);
     }
 
     public double getValue() {
