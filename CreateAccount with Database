@@ -1,14 +1,4 @@
-
-import java.util.ArrayList;
-import java.util.PriorityQueue;
-import java.util.Scanner;
-import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.*;
 
 public class CreateAccount {
     private static TradingApp tradingApp;
@@ -16,6 +6,7 @@ public class CreateAccount {
     private static User user;
     private static PortFolio portfolio;
     private static Database database;
+    private static stockSearch stockSearch;
 
 
     public static void main(String[] args) {
@@ -48,7 +39,7 @@ public class CreateAccount {
         System.out.print("Enter your email address: ");
         String email = scanner.nextLine();
 
-        System.out.print("Enter a password(Must be 8 characters including alphabets, numbers and special characters: ");
+        System.out.print("Enter a password(Must be more than 8 characters including alphabets, numbers and special characters: ");
         String password = scanner.nextLine();
 
         // Validate the password
@@ -85,24 +76,28 @@ public class CreateAccount {
 
 
         if (isMatchFound) {
-            System.out.println("Logged in successfully!");
+            System.out.println("\n***********Logged in successfully!***********\n");
             user=database.retriveUser(loginEmail);
             portfolio= new PortFolio(user);
-            System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
+            System.out.println();
+            System.out.println("********************************");
+            System.out.println("Enter your option");
+            System.out.println("-------------------------------");
+            System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Leaderboard \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
             int num = scanner.nextInt();
 
             while (true) {
                 switch (num) {
                     case 1:
-                        tradingEngine.CheckPendingOrder(portfolio);//keep checking
+//                        tradingEngine.CheckPendingOrder(portfolio);//keep checking
                         tradingapp.setOrder(portfolio.getUser());
                         break;
                     case 2:
-                        tradingEngine.CheckPendingOrder(portfolio);
-                        tradingapp.updatePendingOrder(portfolio.getUser());
+//                        tradingEngine.CheckPendingOrder(portfolio);
+                        tradingEngine.getPendingOrders(user);
                         break;
                     case 3:
-                        System.out.println("1. Cancel order base on longest time \n 2. Cancel order base on highest amount of money");
+                        System.out.println("1. Cancel order base on longest time \n2. Cancel order base on highest amount of money");
                         int criteria = scanner.nextInt();
                         TradingEngine.Criteria criterias = null;
                         switch (criteria) {
@@ -117,28 +112,45 @@ public class CreateAccount {
                         tradingEngine.CheckPendingOrder(portfolio); //keep checking the condition
                         break;
                     case 4:
-                        System.out.println("Current Holdings : " + portfolio.getHoldings() + " Acoount Balance: " + portfolio.getAccountBalance());
+                        System.out.println("Current Holdings");
+                        System.out.println("-------------------------------------------");
+                        System.out.printf("%-20s %-20s\n", "Stock symbol", "Shares");
+                        System.out.println("-------------------------------------------");
+                        for (Map.Entry<Stock, Integer> entry : portfolio.getHoldings().entrySet()) {
+                            Stock stocks = entry.getKey();
+                            int shares = entry.getValue();
+                            System.out.printf("%-20s %-20s\n", stocks.getSymbol(), shares);
+                        }
+                        System.out.println("Account Balance: " + portfolio.getAccountBalance());
                         break;
                     case 5:
-                        Leaderboard lb = new Leaderboard(database.retriveUserList());
-                        lb.displayLeaderboard();
+//                        Leaderboard lb = new Leaderboard(database.retriveUserList());
+//                        lb.displayLeaderboard();
+//                        break
                     case 6:
                         stockSearch stockSearch = new stockSearch(retrievedStockList);
                         stockSearch.searchStocks();
+                        break;
                     case 7:
-                        Dashboard ds = new Dashboard(portfolio);
-                        System.out.println("Would you like to sort the order history by price? (y/n)");
-                        String sort = scanner.next();
-                        if (sort.equals("y")) {
-                            ds.displayAll(Dashboard.displayType.PRICE);
-                        }
-                        else{
-                            ds.displayAll(Dashboard.displayType.CHRONOLOGICAL);
-                        }
-                        
+                        System.out.println("Profit &Loss :");
+                        System.out.println(user.getTotalPnL());
+                        break;
                     case 8:
+                        List<Order> orderHistory= database.retriveOrderHistory(user);
                         System.out.println("Order History: ");
-                        System.out.println(database.retriveOrderHistory(user));
+                        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
+                        System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "Order ID","Time", "Type", "Position","Price","Share","Total Price");
+                        System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
+                        for(Order OrderHistory:orderHistory){
+                            int ID = OrderHistory.getID();
+                            String time = OrderHistory.getTime();
+                            Order.Type type= OrderHistory.getType();
+                            Order.Position position = OrderHistory.getPosition();
+                            double price = OrderHistory.getPrice();
+                            int share= OrderHistory.getShares();
+                            double total= OrderHistory.getValue();
+                            System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", ID,time,type,position,price,share,total);
+                        }
                         break;
                     case 9:
                         return;
@@ -155,7 +167,7 @@ public class CreateAccount {
 
     public static boolean isValidPassword(String password) {
         // Check if the password is exactly 8 characters long
-        if (password.length() != 8) {
+        if (password.length() < 8|| password.length() > 16) {
             return false;
         }
 
@@ -182,9 +194,6 @@ public class CreateAccount {
         return true;
     }
 }
-
-
-
 
 
 
