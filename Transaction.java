@@ -9,19 +9,15 @@ package dsgroup;
  * @author sharr
  */
 public class Transaction {
-
     private User user;
     private Order order;
-    private Stock stock;
-    private Order.Type type;
-    private int shares;
 
     public Transaction(User user, Order order) {
         this.user = user;
         this.order = order;
-        this.stock = order.getStock();
-        this.type = order.getType();
-        this.shares = order.getShares();
+    }
+
+    public Transaction(String name, String email, Stock stock, Order.Type type, int shares) {
     }
 
     public User getUser() {
@@ -33,15 +29,36 @@ public class Transaction {
     }
 
     public Stock getStock() {
-        return stock;
-    }
-
-    public Order.Type getType() {
-        return type;
+        return order.getStock();
     }
 
     public int getShares() {
-        return shares;
+        return order.getShares();
     }
 
+    public double getTotalCost() {
+        return order.getShares() * order.getPrice();
+    }
+
+    public Order.Type getType() {
+        return order.getType();
+    }
+
+    // Additional methods can be added here based on your requirements
+
+    public boolean isBuyTransaction() {
+        return order.getType() == Order.Type.BUY;
+    }
+
+    public boolean isSellTransaction() {
+        return order.getType() == Order.Type.SELL;
+    }
+
+    public double getTransactionPrice() {
+        return order.getPrice();
+    }
+
+    public double getTransactionCost() {
+        return order.getShares() * order.getPrice();
+    }
 }
