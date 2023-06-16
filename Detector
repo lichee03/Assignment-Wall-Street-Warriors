@@ -1,0 +1,10 @@
+public class Detector {
+    public static void main(String[] args) {
+        FraudDetection fraudDetection = new FraudDetection();
+        fraudDetection.detectFraud();
+
+        if (!fraudDetection.isFraudDetected()) {
+            System.out.println("No fraud detected.");
+        }
+    }
+}
