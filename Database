@@ -196,6 +196,26 @@ public class Database {
             e.printStackTrace();
         }
     }
+    public void updateHoldings(String name, String symbol, int shares) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
+            String sql = "UPDATE holdings SET Shares = ? WHERE UserName = ? AND Stocksymbol = ?";
+            PreparedStatement statement = connection.prepareStatement(sql);
+
+            // Set the new values for the columns
+            statement.setInt(1, shares);
+            statement.setString(2, name);
+            statement.setString(3, symbol);
+            // Execute the update statement
+            int rowsAffected = statement.executeUpdate();
+
+            System.out.println("update holding Rows affected: " + rowsAffected);
+
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println("Error updating data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public void insertHoldings(String name, String symbol, int shares,double price) {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) {
