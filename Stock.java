@@ -107,7 +107,7 @@ public class Stock implements Comparable<Stock> {
 //        }
         this.price2 = new Price2();
         price2.fetchData(getSymbol());
-        this.price=price2.getCloseDate().peek().getData();
+        this.price=price2.getPrices();
         return price;
     }
 
