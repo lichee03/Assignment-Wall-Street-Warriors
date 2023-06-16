@@ -47,7 +47,7 @@ public class TradingEngine {
         }
         executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.scheduleAtFixedRate(this::replenishLotPool, 0, INTERVAL_HOURS, TimeUnit.HOURS);
-        ;
+
     }
 
 
@@ -127,6 +127,7 @@ public class TradingEngine {
                                     System.out.println(availablesellorder.getName());
                                     PortFolio portfolio1 = new PortFolio(user1);
                                     portfolio1.removeStock(availablesellorder.getStock(), availablesellorder.getShares(), availablesellorder.getPrice());
+                                    portfolio1.countProfitLoss(availablesellorder);
                                     portfolio1.getHoldings();
                                     System.out.println("Buy Order completed");
                                     database.updateOrderHistory(order.getID(), "Completed");
@@ -141,9 +142,10 @@ public class TradingEngine {
                                     }
                                     System.out.println("Account Balance: " + portfolio.getAccountBalance());
                                     break;
+
                                 }
                             }
-                if (orderExecuted && !orders.isEmpty()) {
+                            if (orderExecuted && !orders.isEmpty()) {
                                 orders.remove(i);
                                 i--;
                             }
@@ -227,6 +229,8 @@ public class TradingEngine {
                         }
                         System.out.println("Acoount Balance: " + portfolio.getAccountBalance());
                         database.updateOrderHistory(order.getID(), "Completed");
+                        //count profit and loss
+                        portfolio.countProfitLoss(order);
                         Automatching(order, portfolio.getUser());
                         break;
                     } else {
@@ -242,6 +246,7 @@ public class TradingEngine {
             if (!matchFound) {
                 database.insertPendingOrder(order, portfolio.getUser());
                 System.out.println("No buy orders available. Order is pending.");
+                Automatching(order,portfolio.getUser());
 
             }
         }
@@ -396,6 +401,12 @@ public class TradingEngine {
         long noOfDays = Duration.between(sessionStart, now).toDays();
         return noOfDays < 3;
     }
+    public boolean checkCompetitionPeriod() {
+        LocalDateTime sessionStart = LocalDateTime.of(2023, 6, 5, 9, 0);
+        LocalDateTime now = LocalDateTime.now();
+        long noOfDays = Duration.between(sessionStart, now).toDays();
+        return noOfDays == 42;
+    }
 
     public boolean isClosingTime() {
         LocalTime now = LocalTime.now();
@@ -410,16 +421,16 @@ public class TradingEngine {
         double acceptableRange = stockPrice * 0.01; // Calculate 1% of the current price
         double lowerBound = stockPrice - acceptableRange;
         double upperBound = stockPrice + acceptableRange;
-        System.out.println("Suggested price range for " + stock.getName() + ": " + lowerBound + " - " + upperBound);
+        System.out.printf("Suggested price range  (%.4f): %.4f - %.4f%n", stock.getPrice(), lowerBound, upperBound);
     }
 
-    public void replenishLotPool() { //this is just the basic method, havent implemented a timer since idk how its gonna be used :p
+        public void replenishLotPool() {
         Map<Stock, Integer> lotpools = new HashMap<>();
         lotpools = database.retriveLotPool();
         for(Map.Entry<Stock,Integer>lotpool: lotPool.entrySet()){
             Stock stock = lotpool.getKey();
             int share = lotpool.getValue();
-            database.UpdatelotPool(stock,share+50000);
+            database.UpdatelotPool(stock,50000);
         }
     }
 
