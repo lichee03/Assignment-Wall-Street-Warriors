@@ -1,3 +1,6 @@
+package WallStreet;
+
+
 import java.util.*;
 
 public class CreateAccount {
@@ -6,7 +9,7 @@ public class CreateAccount {
     private static User user;
     private static PortFolio portfolio;
     private static Database database;
-    private static stockSearch stockSearch;
+//    private static StockSearch stockSearch;
 
 
     public static void main(String[] args) {
@@ -29,6 +32,10 @@ public class CreateAccount {
 
     public static void Register() {
         Scanner scanner = new Scanner(System.in);
+        if (tradingEngine.checkCompetitionPeriod()){
+            System.out.println("The Competition Has Ended!");
+            System.exit(0);
+        }
         // 1. Create a trading account
         System.out.println("Welcome to the trading competition!");
         System.out.println("Please enter your details to create a trading account.");
@@ -39,7 +46,7 @@ public class CreateAccount {
         System.out.print("Enter your email address: ");
         String email = scanner.nextLine();
 
-        System.out.print("Enter a password(Must be more than 8 characters including alphabets, numbers and special characters: ");
+        System.out.print("Enter a password(Must be 8 characters including alphabets, numbers and special characters: ");
         String password = scanner.nextLine();
 
         // Validate the password
@@ -62,6 +69,11 @@ public class CreateAccount {
         TradingApp tradingapp = new TradingApp(tradingEngine);
         PortFolio portfolio = new PortFolio(user);
         Database database = new Database();
+
+        if (tradingEngine.checkCompetitionPeriod()){
+            System.out.println("The Competition Has Ended!");
+            System.exit(0);
+        }
         // 2. Log in to the app
         System.out.println("Please enter your account credentials to log in to the trading competition app.");
 //
@@ -123,23 +135,17 @@ public class CreateAccount {
                         }
                         System.out.println("Account Balance: " + portfolio.getAccountBalance());
                         break;
-                    case 5:
-//                        Leaderboard lb = new Leaderboard(database.retriveUserList());
-//                        lb.displayLeaderboard();
-//                        break
                     case 6:
-                        stockSearch stockSearch = new stockSearch(retrievedStockList);
-                        stockSearch.searchStocks();
+//                        stockSearch = new StockSearch();
+//                        stockSearch.searchStocks();
                         break;
                     case 7:
-                        System.out.println("Profit &Loss :");
-                        System.out.println(user.getTotalPnL());
                         break;
                     case 8:
                         List<Order> orderHistory= database.retriveOrderHistory(user);
                         System.out.println("Order History: ");
                         System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
-                        System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "Order ID","Time", "Type", "Position","Price","Share","Total Price");
+                        System.out.printf("%-20s %-20s %-20s %-20s %-20s %-20s\n", "Order ID","Time", "Type", "Position","Price","Share","Total Price");
                         System.out.println("-------------------------------------------------------------------------------------------------------------------------------------------------");
                         for(Order OrderHistory:orderHistory){
                             int ID = OrderHistory.getID();
@@ -153,7 +159,7 @@ public class CreateAccount {
                         }
                         break;
                     case 9:
-                        return;
+                        System.exit(0);
                 }
                 System.out.println("1: place order \n2: pending order \n3: cancel order \n4. Check holdings \n5. Ranking \n6. Stock search \n7. Trading Dashboard \n8. OrderHistory \n9. Exit");
                 num = scanner.nextInt();
@@ -167,7 +173,7 @@ public class CreateAccount {
 
     public static boolean isValidPassword(String password) {
         // Check if the password is exactly 8 characters long
-        if (password.length() < 8|| password.length() > 16) {
+        if (password.length() != 8) {
             return false;
         }
 
@@ -194,6 +200,5 @@ public class CreateAccount {
         return true;
     }
 }
-
 
 
